@@ -38,15 +38,17 @@ func (s *GroupService) List(page, perPage int) (*GroupListResponse, error) {
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
-	// APIレスポンスが配列形式の場合の処理
+	// まずオブジェクト形式として解析を試みる
+	var groupList GroupListResponse
+	if err := json.Unmarshal(resp.Body(), &groupList); err == nil {
+		return &groupList, nil
+	}
+
+	// オブジェクト形式での解析に失敗した場合、配列形式として解析を試みる
 	var groups []Group
 	if err := json.Unmarshal(resp.Body(), &groups); err != nil {
-		// 従来の形式（オブジェクト形式）での解析を試みる
-		var groupList GroupListResponse
-		if err2 := json.Unmarshal(resp.Body(), &groupList); err2 != nil {
-			return nil, fmt.Errorf("failed to parse response: %w", err)
-		}
-		return &groupList, nil
+		// デバッグ情報を含めたエラーメッセージを返す
+		return nil, fmt.Errorf("failed to parse response as object or array: %w, response body: %s", err, string(resp.Body()))
 	}
 
 	// 配列形式のレスポンスを GroupListResponse 形式に変換
