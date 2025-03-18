@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -110,7 +111,8 @@ Example:
 				if memoList.Meta.NextPage == nil {
 					break
 				}
-				page = *memoList.Meta.NextPage
+				nextPage, _ := strconv.Atoi(*memoList.Meta.NextPage)
+				page = nextPage
 			}
 
 			fmt.Println(color.GreenString("Export completed successfully"))
@@ -206,7 +208,8 @@ Example:
 				if memoList.Meta.NextPage == nil {
 					break
 				}
-				page = *memoList.Meta.NextPage
+				nextPage, _ := strconv.Atoi(*memoList.Meta.NextPage)
+				page = nextPage
 			}
 
 			fmt.Println(color.GreenString("Export completed successfully"))
