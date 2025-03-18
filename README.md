@@ -25,8 +25,27 @@ brew install docbase
 
 ### Using Go
 
+If you're installing from a public repository:
+
 ```bash
 go install github.com/basi/docbase-cli@latest
+```
+
+If you're installing from a private repository, you need to configure Go to skip the public proxy:
+
+```bash
+# Set GOPRIVATE environment variable
+export GOPRIVATE=github.com/basi/docbase-cli
+
+# Install the CLI
+go install github.com/basi/docbase-cli@latest
+```
+
+For permanent configuration, add the GOPRIVATE setting to your shell profile (~/.bashrc, ~/.zshrc, etc.):
+
+```bash
+echo 'export GOPRIVATE=github.com/basi/docbase-cli' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### Manual Installation
