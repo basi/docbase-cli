@@ -1,0 +1,533 @@
+package memo
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/formatter"
+	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/pkg/docbase"
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+)
+
+var (
+	// MemoCmd represents the memo command
+	MemoCmd = &cobra.Command{
+		Use:   "memo",
+		Short: "Manage memos",
+		Long:  `Manage memos in DocBase.`,
+	}
+
+	// ListCmd represents the memo list command
+	ListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List memos",
+		Long: `List memos in DocBase.
+
+Example:
+  docbase memo list
+  docbase memo list --page 2 --per-page 20
+  docbase memo list --query "tag:週報"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			page, _ := cmd.Flags().GetInt("page")
+			perPage, _ := cmd.Flags().GetInt("per-page")
+			query, _ := cmd.Flags().GetString("query")
+
+			memoList, err := client.Memo.List(page, perPage, query)
+			if err != nil {
+				return err
+			}
+
+			outputFormat, _ := cmd.Flags().GetString("format")
+			f := formatter.NewFormatter(outputFormat, os.Stdout, true)
+
+			if outputFormat == "text" {
+				// Custom text format for list
+				fmt.Printf("Total: %d\n", memoList.Meta.Total)
+				fmt.Println(strings.Repeat("-", 80))
+				fmt.Printf("%-8s %-40s %-20s %s\n", "ID", "Title", "Author", "Tags")
+				fmt.Println(strings.Repeat("-", 80))
+
+				for _, memo := range memoList.Memos {
+					fmt.Printf("%-8d %-40s %-20s %s\n",
+						memo.ID,
+						utils.TruncateString(memo.Title, 37),
+						utils.TruncateString(memo.User.Name, 17),
+						utils.TruncateString(utils.FormatTags(memo.Tags), 20),
+					)
+				}
+
+				if memoList.Meta.NextPage != nil {
+					fmt.Printf("\nUse --page %d to see the next page\n", *memoList.Meta.NextPage)
+				}
+				return nil
+			}
+
+			return f.Print(memoList)
+		},
+	}
+
+	// ViewCmd represents the memo view command
+	ViewCmd = &cobra.Command{
+		Use:   "view [id]",
+		Short: "View a memo",
+		Long: `View a memo in DocBase.
+
+Example:
+  docbase memo view 12345`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			memo, err := client.Memo.Get(id)
+			if err != nil {
+				return err
+			}
+
+			outputFormat, _ := cmd.Flags().GetString("format")
+			f := formatter.NewFormatter(outputFormat, os.Stdout, true)
+
+			if outputFormat == "text" {
+				// Custom text format for view
+				fmt.Printf("ID: %d\n", memo.ID)
+				fmt.Printf("Title: %s\n", memo.Title)
+				fmt.Printf("Author: %s\n", memo.User.Name)
+				fmt.Printf("Created: %s\n", memo.CreatedAt.Format("2006-01-02 15:04:05"))
+				fmt.Printf("Updated: %s\n", memo.UpdatedAt.Format("2006-01-02 15:04:05"))
+				fmt.Printf("Tags: %s\n", utils.FormatTags(memo.Tags))
+				fmt.Printf("Groups: %s\n", utils.FormatGroups(memo.Groups))
+				fmt.Printf("URL: %s\n", memo.URL)
+				fmt.Println(strings.Repeat("-", 80))
+				fmt.Println(memo.Body)
+				return nil
+			}
+
+			return f.Print(memo)
+		},
+	}
+
+	// CreateCmd represents the memo create command
+	CreateCmd = &cobra.Command{
+		Use:   "create",
+		Short: "Create a memo",
+		Long: `Create a memo in DocBase.
+
+Example:
+  docbase memo create --title "Test Memo" --body "This is a test memo" --group "全員"
+  docbase memo create --title "Test Memo" --body-file memo.md --tag "週報" --tag "開発"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			title, _ := cmd.Flags().GetString("title")
+			body, _ := cmd.Flags().GetString("body")
+			bodyFile, _ := cmd.Flags().GetString("body-file")
+			draft, _ := cmd.Flags().GetBool("draft")
+			scope, _ := cmd.Flags().GetString("scope")
+			groupNames, _ := cmd.Flags().GetStringSlice("group")
+			tagNames, _ := cmd.Flags().GetStringSlice("tag")
+			notify, _ := cmd.Flags().GetBool("notify")
+
+			if title == "" {
+				return fmt.Errorf("title is required")
+			}
+
+			if body == "" && bodyFile == "" {
+				return fmt.Errorf("either body or body-file is required")
+			}
+
+			if body == "" && bodyFile != "" {
+				var err error
+				body, err = utils.ReadFile(bodyFile)
+				if err != nil {
+					return err
+				}
+			}
+
+			// Get group IDs
+			var groupIDs []int
+			if len(groupNames) > 0 {
+				groups, err := client.Group.List(1, 100)
+				if err != nil {
+					return err
+				}
+
+				groupMap := make(map[string]int)
+				for _, group := range groups.Groups {
+					groupMap[group.Name] = group.ID
+				}
+
+				for _, name := range groupNames {
+					id, ok := groupMap[name]
+					if !ok {
+						return fmt.Errorf("group not found: %s", name)
+					}
+					groupIDs = append(groupIDs, id)
+				}
+			}
+
+			req := &docbase.CreateMemoRequest{
+				Title:  title,
+				Body:   body,
+				Draft:  draft,
+				Tags:   tagNames,
+				Scope:  scope,
+				Groups: groupIDs,
+				Notify: notify,
+			}
+
+			memo, err := client.Memo.Create(req)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo created successfully"))
+			fmt.Printf("ID: %d\n", memo.ID)
+			fmt.Printf("URL: %s\n", memo.URL)
+
+			return nil
+		},
+	}
+
+	// EditCmd represents the memo edit command
+	EditCmd = &cobra.Command{
+		Use:   "edit [id]",
+		Short: "Edit a memo",
+		Long: `Edit a memo in DocBase.
+
+Example:
+  docbase memo edit 12345 --title "Updated Title"
+  docbase memo edit 12345 --body-file updated.md --tag "週報" --tag "開発"`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			title, _ := cmd.Flags().GetString("title")
+			body, _ := cmd.Flags().GetString("body")
+			bodyFile, _ := cmd.Flags().GetString("body-file")
+			draft, _ := cmd.Flags().GetBool("draft")
+			scope, _ := cmd.Flags().GetString("scope")
+			groupNames, _ := cmd.Flags().GetStringSlice("group")
+			tagNames, _ := cmd.Flags().GetStringSlice("tag")
+			notify, _ := cmd.Flags().GetBool("notify")
+
+			if body == "" && bodyFile != "" {
+				var err error
+				body, err = utils.ReadFile(bodyFile)
+				if err != nil {
+					return err
+				}
+			}
+
+			// Get group IDs
+			var groupIDs []int
+			if len(groupNames) > 0 {
+				groups, err := client.Group.List(1, 100)
+				if err != nil {
+					return err
+				}
+
+				groupMap := make(map[string]int)
+				for _, group := range groups.Groups {
+					groupMap[group.Name] = group.ID
+				}
+
+				for _, name := range groupNames {
+					id, ok := groupMap[name]
+					if !ok {
+						return fmt.Errorf("group not found: %s", name)
+					}
+					groupIDs = append(groupIDs, id)
+				}
+			}
+
+			req := &docbase.UpdateMemoRequest{
+				Title:  title,
+				Body:   body,
+				Draft:  draft,
+				Tags:   tagNames,
+				Scope:  scope,
+				Groups: groupIDs,
+				Notify: notify,
+			}
+
+			memo, err := client.Memo.Update(id, req)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo updated successfully"))
+			fmt.Printf("ID: %d\n", memo.ID)
+			fmt.Printf("URL: %s\n", memo.URL)
+
+			return nil
+		},
+	}
+
+	// DeleteCmd represents the memo delete command
+	DeleteCmd = &cobra.Command{
+		Use:   "delete [id]",
+		Short: "Delete a memo",
+		Long: `Delete a memo in DocBase.
+
+Example:
+  docbase memo delete 12345`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			force, _ := cmd.Flags().GetBool("force")
+			if !force {
+				fmt.Printf("Are you sure you want to delete memo %d? (y/N): ", id)
+				var confirm string
+				fmt.Scanln(&confirm)
+				if strings.ToLower(confirm) != "y" {
+					fmt.Println("Deletion cancelled")
+					return nil
+				}
+			}
+
+			if err := client.Memo.Delete(id); err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo deleted successfully"))
+			return nil
+		},
+	}
+
+	// ArchiveCmd represents the memo archive command
+	ArchiveCmd = &cobra.Command{
+		Use:   "archive [id]",
+		Short: "Archive a memo",
+		Long: `Archive a memo in DocBase.
+
+Example:
+  docbase memo archive 12345`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			if err := client.Memo.Archive(id); err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo archived successfully"))
+			return nil
+		},
+	}
+
+	// UnarchiveCmd represents the memo unarchive command
+	UnarchiveCmd = &cobra.Command{
+		Use:   "unarchive [id]",
+		Short: "Unarchive a memo",
+		Long: `Unarchive a memo in DocBase.
+
+Example:
+  docbase memo unarchive 12345`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			if err := client.Memo.Unarchive(id); err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo unarchived successfully"))
+			return nil
+		},
+	}
+
+	// SearchCmd represents the memo search command
+	SearchCmd = &cobra.Command{
+		Use:   "search [query]",
+		Short: "Search memos",
+		Long: `Search memos in DocBase.
+
+Example:
+  docbase memo search "keyword"
+  docbase memo search "tag:週報 author:john"
+  docbase memo search "group:全員 created_at:2023-01-01~2023-12-31"`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := utils.CreateClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			var query string
+			if len(args) > 0 {
+				query = args[0]
+			}
+
+			// Additional search parameters
+			author, _ := cmd.Flags().GetString("author")
+			group, _ := cmd.Flags().GetString("group")
+			tag, _ := cmd.Flags().GetString("tag")
+			createdAfter, _ := cmd.Flags().GetString("created-after")
+			createdBefore, _ := cmd.Flags().GetString("created-before")
+
+			// Build query string
+			queryParts := []string{}
+			if query != "" {
+				queryParts = append(queryParts, query)
+			}
+			if author != "" {
+				queryParts = append(queryParts, fmt.Sprintf("author:%s", author))
+			}
+			if group != "" {
+				queryParts = append(queryParts, fmt.Sprintf("group:%s", group))
+			}
+			if tag != "" {
+				queryParts = append(queryParts, fmt.Sprintf("tag:%s", tag))
+			}
+			if createdAfter != "" && createdBefore != "" {
+				queryParts = append(queryParts, fmt.Sprintf("created_at:%s~%s", createdAfter, createdBefore))
+			} else if createdAfter != "" {
+				queryParts = append(queryParts, fmt.Sprintf("created_at:%s~*", createdAfter))
+			} else if createdBefore != "" {
+				queryParts = append(queryParts, fmt.Sprintf("created_at:*~%s", createdBefore))
+			}
+
+			finalQuery := strings.Join(queryParts, " ")
+
+			page, _ := cmd.Flags().GetInt("page")
+			perPage, _ := cmd.Flags().GetInt("per-page")
+
+			memoList, err := client.Memo.List(page, perPage, finalQuery)
+			if err != nil {
+				return err
+			}
+
+			outputFormat, _ := cmd.Flags().GetString("format")
+			f := formatter.NewFormatter(outputFormat, os.Stdout, true)
+
+			if outputFormat == "text" {
+				// Custom text format for list
+				fmt.Printf("Total: %d\n", memoList.Meta.Total)
+				fmt.Println(strings.Repeat("-", 80))
+				fmt.Printf("%-8s %-40s %-20s %s\n", "ID", "Title", "Author", "Tags")
+				fmt.Println(strings.Repeat("-", 80))
+
+				for _, memo := range memoList.Memos {
+					fmt.Printf("%-8d %-40s %-20s %s\n",
+						memo.ID,
+						utils.TruncateString(memo.Title, 37),
+						utils.TruncateString(memo.User.Name, 17),
+						utils.TruncateString(utils.FormatTags(memo.Tags), 20),
+					)
+				}
+
+				if memoList.Meta.NextPage != nil {
+					fmt.Printf("\nUse --page %d to see the next page\n", *memoList.Meta.NextPage)
+				}
+				return nil
+			}
+
+			return f.Print(memoList)
+		},
+	}
+)
+
+func init() {
+	// Add memo command to root command
+	root.AddCommand(MemoCmd)
+
+	// Add subcommands to memo command
+	MemoCmd.AddCommand(ListCmd)
+	MemoCmd.AddCommand(ViewCmd)
+	MemoCmd.AddCommand(CreateCmd)
+	MemoCmd.AddCommand(EditCmd)
+	MemoCmd.AddCommand(DeleteCmd)
+	MemoCmd.AddCommand(ArchiveCmd)
+	MemoCmd.AddCommand(UnarchiveCmd)
+	MemoCmd.AddCommand(SearchCmd)
+
+	// Add flags to list command
+	ListCmd.Flags().Int("page", 1, "Page number")
+	ListCmd.Flags().Int("per-page", 20, "Number of items per page")
+	ListCmd.Flags().String("query", "", "Search query")
+
+	// Add flags to create command
+	CreateCmd.Flags().String("title", "", "Memo title")
+	CreateCmd.Flags().String("body", "", "Memo body")
+	CreateCmd.Flags().String("body-file", "", "File containing memo body")
+	CreateCmd.Flags().Bool("draft", false, "Save as draft")
+	CreateCmd.Flags().String("scope", "group", "Memo scope (group, private)")
+	CreateCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
+	CreateCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
+	CreateCmd.Flags().Bool("notify", false, "Send notification")
+
+	// Add flags to edit command
+	EditCmd.Flags().String("title", "", "Memo title")
+	EditCmd.Flags().String("body", "", "Memo body")
+	EditCmd.Flags().String("body-file", "", "File containing memo body")
+	EditCmd.Flags().Bool("draft", false, "Save as draft")
+	EditCmd.Flags().String("scope", "", "Memo scope (group, private)")
+	EditCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
+	EditCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
+	EditCmd.Flags().Bool("notify", false, "Send notification")
+
+	// Add flags to delete command
+	DeleteCmd.Flags().Bool("force", false, "Force deletion without confirmation")
+
+	// Add flags to search command
+	SearchCmd.Flags().Int("page", 1, "Page number")
+	SearchCmd.Flags().Int("per-page", 20, "Number of items per page")
+	SearchCmd.Flags().String("author", "", "Filter by author")
+	SearchCmd.Flags().String("group", "", "Filter by group")
+	SearchCmd.Flags().String("tag", "", "Filter by tag")
+	SearchCmd.Flags().String("created-after", "", "Filter by creation date (YYYY-MM-DD)")
+	SearchCmd.Flags().String("created-before", "", "Filter by creation date (YYYY-MM-DD)")
+}
