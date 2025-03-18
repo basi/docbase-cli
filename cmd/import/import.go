@@ -1,18 +1,18 @@
 package import_cmd
 
 import (
-	_ "encoding/json"
-	_ "fmt"
-	_ "io/ioutil"
-	_ "path/filepath"
-	_ "strings"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 
-	_ "github.com/basi/docbase-cli/cmd/root"
-	_ "github.com/basi/docbase-cli/internal/utils"
-	_ "github.com/basi/docbase-cli/pkg/docbase"
-	_ "github.com/fatih/color"
-	_ "github.com/spf13/cobra"
-	_ "gopkg.in/yaml.v3"
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/pkg/docbase"
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // Note: We use import_cmd as the package name because "import" is a reserved keyword in Go

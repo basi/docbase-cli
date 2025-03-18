@@ -3,6 +3,7 @@ package tag
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/basi/docbase-cli/cmd/root"
@@ -57,7 +58,8 @@ Example:
 				}
 
 				if tagList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *tagList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*tagList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}
@@ -106,7 +108,8 @@ Example:
 				}
 
 				if tagList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *tagList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*tagList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}
