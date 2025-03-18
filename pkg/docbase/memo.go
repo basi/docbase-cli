@@ -68,7 +68,21 @@ func (s *MemoService) Get(id int) (*Memo, error) {
 
 	var memoResp MemoResponse
 	if err := json.Unmarshal(resp.Body(), &memoResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		// Try to unmarshal directly to Memo if MemoResponse fails
+		var memo Memo
+		if err := json.Unmarshal(resp.Body(), &memo); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		return &memo, nil
+	}
+
+	// If Memo is empty (ID is 0), try direct unmarshaling
+	if memoResp.Memo.ID == 0 {
+		var memo Memo
+		if err := json.Unmarshal(resp.Body(), &memo); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		return &memo, nil
 	}
 
 	return &memoResp.Memo, nil
