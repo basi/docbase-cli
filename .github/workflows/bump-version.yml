@@ -36,9 +36,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
       
+      - name: Build Binary
+        run: |
+          go build -o docbase-cli .
+      
       - name: Package Binary
         run: |
-          make build
           zip -r docbase-cli.zip ./docbase-cli LICENSE README.md
       
       - name: Create Tag
