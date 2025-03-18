@@ -26,10 +26,10 @@ type User struct {
 
 // Group represents a DocBase group
 type Group struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	Description string  `json:"description"`
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
 }
 
 // Tag represents a DocBase tag
