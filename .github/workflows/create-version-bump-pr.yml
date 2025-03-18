@@ -1,0 +1,76 @@
+name: Create Version Bump PR
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-bump-pr:
+    if: github.event.pull_request.merged == true && !contains(github.event.pull_request.title, 'バージョンを自動インクリメント')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Check Existing Version Bump PR
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # バージョンインクリメントPRの検索
+          PR_COUNT=$(gh pr list --state open --search "バージョンを自動インクリメント in:title" --json number | jq length)
+          echo "pr_exists=$PR_COUNT" >> $GITHUB_OUTPUT
+          if [ "$PR_COUNT" -gt "0" ]; then
+            echo "既にバージョンインクリメントPRが存在します。スキップします。"
+            exit 0
+          fi
+      
+      - name: Create Version Bump Branch
+        if: steps.check_pr.outputs.pr_exists == '0'
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          BRANCH_NAME="chore/bump-version-$(date +%s)"
+          git checkout -b $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+      
+      - name: Update Version
+        if: steps.check_pr.outputs.pr_exists == '0'
+        id: version
+        run: |
+          node .github/scripts/update-version.js
+      
+      - name: Create Pull Request
+        if: steps.check_pr.outputs.pr_exists == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git add cmd/root/root.go
+          git commit -m "chore: bump version"
+          git push origin $BRANCH_NAME
+          gh pr create \
+            --title "chore: バージョンを自動インクリメント" \
+            --body "## 概要
+            
+            mainブランチへのマージを検知し、バージョンを自動的にインクリメントします。
+            
+            ## 変更内容
+            - manifest.jsonのバージョンをインクリメント
+            
+            ## 自動生成について
+            このPRは自動的に生成されています。マージ後、GitHub Actionsによってリリースが作成されます。" \
+            --base main \
+            --head $BRANCH_NAME
