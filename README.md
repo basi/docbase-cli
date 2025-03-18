@@ -1,0 +1,2 @@
+# docbase-cli
+Docbase CLI
