@@ -62,7 +62,8 @@ Example:
 				}
 
 				if groupList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *groupList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*groupList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}

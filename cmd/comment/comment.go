@@ -70,7 +70,8 @@ Example:
 				}
 
 				if commentList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *commentList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*commentList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}
