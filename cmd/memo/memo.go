@@ -67,7 +67,8 @@ Example:
 				}
 
 				if memoList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *memoList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*memoList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}
@@ -470,7 +471,8 @@ Example:
 				}
 
 				if memoList.Meta.NextPage != nil {
-					fmt.Printf("\nUse --page %d to see the next page\n", *memoList.Meta.NextPage)
+					nextPage, _ := strconv.Atoi(*memoList.Meta.NextPage)
+					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
 				}
 				return nil
 			}
