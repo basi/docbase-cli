@@ -24,38 +24,21 @@ No unreleased changes at this time.
   - Added support for both array and object formats
 - Translated Japanese comments and messages in `.github/scripts/update-version.js` to English
 
-## [0.0.6] - 2025-03-01
+## [0.0.6] - 2025-03-18
 
 Current version at the time of this changelog update.
-
-## [0.0.5] - 2025-02-15
 
 ### Fixed
 - Fixed version bump workflow
 - Fixed attachment ID type handling
-
-## [0.0.4] - 2025-02-01
-
-### Fixed
 - Fixed group list response handling
 - Fixed memo view command
-
-## [0.0.3] - 2025-01-15
-
-### Fixed
 - Fixed go install issue
 - Fixed Makefile homebrew formula
-
-## [0.0.2] - 2025-01-01
 
 ### Added
 - Added DocBase package
 - Added GitHub Actions workflow
-
-## [0.0.1] - 2024-12-15
-
-### Added
-- Initial development release
 
 ## [0.1.0] - 2023-01-01
 
