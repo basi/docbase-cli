@@ -14,6 +14,10 @@ DocBase CLI is a command-line interface for [DocBase](https://docbase.io/), a kn
 - Import memos from local files
 - Shell completion for Bash, Zsh, Fish, and PowerShell
 
+## Changelog
+
+For a detailed list of changes and version history, please see the [CHANGELOG.md](CHANGELOG.md) file.
+
 ## Installation
 
 ### Using Homebrew (macOS and Linux)

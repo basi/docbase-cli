@@ -169,7 +169,7 @@ Example:
 			if len(groupNames) > 0 {
 				groups, err := client.Group.List(1, 100)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to retrieve group list: %w", err)
 				}
 
 				groupMap := make(map[string]int)
@@ -180,7 +180,12 @@ Example:
 				for _, name := range groupNames {
 					id, ok := groupMap[name]
 					if !ok {
-						return fmt.Errorf("group not found: %s", name)
+						// Provide a more helpful error message with available groups
+						var availableGroups []string
+						for groupName := range groupMap {
+							availableGroups = append(availableGroups, groupName)
+						}
+						return fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
 					}
 					groupIDs = append(groupIDs, id)
 				}
@@ -252,7 +257,7 @@ Example:
 			if len(groupNames) > 0 {
 				groups, err := client.Group.List(1, 100)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to retrieve group list: %w", err)
 				}
 
 				groupMap := make(map[string]int)
@@ -263,7 +268,12 @@ Example:
 				for _, name := range groupNames {
 					id, ok := groupMap[name]
 					if !ok {
-						return fmt.Errorf("group not found: %s", name)
+						// Provide a more helpful error message with available groups
+						var availableGroups []string
+						for groupName := range groupMap {
+							availableGroups = append(availableGroups, groupName)
+						}
+						return fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
 					}
 					groupIDs = append(groupIDs, id)
 				}
