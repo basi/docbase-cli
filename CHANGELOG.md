@@ -28,22 +28,10 @@ No unreleased changes at this time.
 
 Current version at the time of this changelog update.
 
-### Fixed
-- Fixed version bump workflow
-- Fixed attachment ID type handling
-- Fixed group list response handling
-- Fixed memo view command
-- Fixed go install issue
-- Fixed Makefile homebrew formula
-
-### Added
-- Added DocBase package
-- Added GitHub Actions workflow
-
-## [0.1.0] - 2023-01-01
-
 ### Added
 - Initial release
+- Added DocBase package
+- Added GitHub Actions workflow
 - Memo listing, viewing, creating, editing, deleting, and archiving functionality
 - Group listing and viewing functionality
 - Tag listing functionality
@@ -51,3 +39,11 @@ Current version at the time of this changelog update.
 - Authentication functionality
 - Configuration management functionality
 - Export/import functionality
+
+### Fixed
+- Fixed version bump workflow
+- Fixed attachment ID type handling
+- Fixed group list response handling
+- Fixed memo view command
+- Fixed go install issue
+- Fixed Makefile homebrew formula
