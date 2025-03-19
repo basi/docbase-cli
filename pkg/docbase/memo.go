@@ -100,12 +100,30 @@ func (s *MemoService) Create(req *CreateMemoRequest) (*Memo, error) {
 		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
 			return nil, fmt.Errorf("failed to parse error response: %w", err)
 		}
+		// Improve error message to include the error type
+		if errResp.Error != "" {
+			return nil, fmt.Errorf("API error: [%s]", errResp.Error)
+		}
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
 	var memoResp MemoResponse
 	if err := json.Unmarshal(resp.Body(), &memoResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		// Try to unmarshal directly to Memo if MemoResponse fails
+		var memo Memo
+		if err := json.Unmarshal(resp.Body(), &memo); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		return &memo, nil
+	}
+
+	// If Memo is empty (ID is 0), try direct unmarshaling
+	if memoResp.Memo.ID == 0 {
+		var memo Memo
+		if err := json.Unmarshal(resp.Body(), &memo); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+		return &memo, nil
 	}
 
 	return &memoResp.Memo, nil
