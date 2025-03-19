@@ -1,32 +1,70 @@
 # DocBase CLI Changelog
 
-このファイルには、DocBase CLIの更新履歴が記録されています。
+This file contains the version history and updates for DocBase CLI.
 
 ## [Unreleased]
 
-### 追加
-- デバッグ用ビルドスクリプト `debug-build.sh` の追加
+No unreleased changes at this time.
 
-### 修正
-- `docbase memo create` コマンドのAPI応答処理を改善
-  - エラーレスポンスの処理を強化し、エラータイプを明示的に表示
-  - 異なるAPIレスポンス形式に対応するための処理を追加
-- グループ名からグループIDへの変換処理を改善
-  - グループ一覧取得失敗時のエラーメッセージを詳細化
-  - グループ名が見つからない場合に利用可能なグループ一覧を表示するよう改善
-- `docbase memo view` コマンドのAPI応答処理を改善
-  - 異なるレスポンス形式に対応するための処理を追加
-- グループ一覧のレスポンス処理を改善
-  - 配列形式とオブジェクト形式の両方に対応
+## [0.0.7] - 2025-03-19
+
+### Added
+- Debug build script `debug-build.sh` for easier testing and development
+
+### Fixed
+- Improved API response handling in `docbase memo create` command
+  - Enhanced error response processing to display error types explicitly
+  - Added support for different API response formats
+- Improved group name to group ID conversion process
+  - Added more detailed error messages when group list retrieval fails
+  - Enhanced error messages to display available groups when a group name is not found
+- Improved API response handling in `docbase memo view` command
+  - Added support for different response formats
+- Improved group list response handling
+  - Added support for both array and object formats
+- Translated Japanese comments and messages in `.github/scripts/update-version.js` to English
+
+## [0.0.6] - 2025-03-01
+
+Current version at the time of this changelog update.
+
+## [0.0.5] - 2025-02-15
+
+### Fixed
+- Fixed version bump workflow
+- Fixed attachment ID type handling
+
+## [0.0.4] - 2025-02-01
+
+### Fixed
+- Fixed group list response handling
+- Fixed memo view command
+
+## [0.0.3] - 2025-01-15
+
+### Fixed
+- Fixed go install issue
+- Fixed Makefile homebrew formula
+
+## [0.0.2] - 2025-01-01
+
+### Added
+- Added DocBase package
+- Added GitHub Actions workflow
+
+## [0.0.1] - 2024-12-15
+
+### Added
+- Initial development release
 
 ## [0.1.0] - 2023-01-01
 
-### 追加
-- 初期リリース
-- メモの一覧表示、閲覧、作成、編集、削除、アーカイブ機能
-- グループの一覧表示、閲覧機能
-- タグの一覧表示機能
-- コメントの一覧表示、作成、編集、削除機能
-- 認証機能
-- 設定管理機能
-- エクスポート/インポート機能
+### Added
+- Initial release
+- Memo listing, viewing, creating, editing, deleting, and archiving functionality
+- Group listing and viewing functionality
+- Tag listing functionality
+- Comment listing, creating, editing, and deleting functionality
+- Authentication functionality
+- Configuration management functionality
+- Export/import functionality
