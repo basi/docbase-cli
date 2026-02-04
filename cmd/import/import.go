@@ -42,11 +42,10 @@ Example:
 			}
 
 			filePath := args[0]
-			groupNames, _ := cmd.Flags().GetStringSlice("group")
-			tagNames, _ := cmd.Flags().GetStringSlice("tag")
-			draft, _ := cmd.Flags().GetBool("draft")
-			scope, _ := cmd.Flags().GetString("scope")
-			notify, _ := cmd.Flags().GetBool("notify")
+			opts, err := getImportOptions(cmd)
+			if err != nil {
+				return err
+			}
 
 			// Read file
 			content, err := os.ReadFile(filePath)
@@ -54,45 +53,38 @@ Example:
 				return fmt.Errorf("failed to read file: %w", err)
 			}
 
-			// Parse file
-			var title, body string
-			ext := strings.ToLower(filepath.Ext(filePath))
-
-			switch ext {
-			case ".md":
-				title, body, err = parseMdFile(content)
-				if err != nil {
-					return err
-				}
-			case ".json":
-				title, body, err = parseJsonFile(content)
-				if err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unsupported file format: %s", ext)
+			data, err := parseImportFile(filePath, content)
+			if err != nil {
+				return err
 			}
 
-			// Get group IDs
-			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			var groupMap map[string]int
+			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
+				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				if err != nil {
+					return err
+				}
+				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				if err != nil {
+					return err
+				}
+			}
+
+			req, _, err := buildCreateMemoRequest(client, opts, data, groupMap)
 			if err != nil {
 				return err
 			}
 
 			// Create memo
-			req := &docbase.CreateMemoRequest{
-				Title:  title,
-				Body:   body,
-				Draft:  draft,
-				Tags:   tagNames,
-				Scope:  scope,
-				Groups: groupIDs,
-				Notify: notify,
-			}
-
 			memo, err := client.Memo.Create(req)
 			if err != nil {
 				return err
+			}
+
+			if data.Archived != nil && *data.Archived {
+				if err := client.Memo.Archive(memo.ID); err != nil {
+					return err
+				}
 			}
 
 			fmt.Println(color.GreenString("Memo imported successfully"))
@@ -120,18 +112,11 @@ Example:
 			}
 
 			dirPath := args[0]
-			groupNames, _ := cmd.Flags().GetStringSlice("group")
-			tagNames, _ := cmd.Flags().GetStringSlice("tag")
-			draft, _ := cmd.Flags().GetBool("draft")
-			scope, _ := cmd.Flags().GetString("scope")
-			notify, _ := cmd.Flags().GetBool("notify")
-			limit, _ := cmd.Flags().GetInt("limit")
-
-			// Get group IDs
-			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			opts, err := getImportOptions(cmd)
 			if err != nil {
 				return err
 			}
+			limit, _ := cmd.Flags().GetInt("limit")
 
 			// List files in directory
 			files, err := os.ReadDir(dirPath)
@@ -154,6 +139,18 @@ Example:
 
 			fmt.Printf("Found %d valid files\n", len(validFiles))
 
+			var groupMap map[string]int
+			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
+				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				if err != nil {
+					return err
+				}
+				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				if err != nil {
+					return err
+				}
+			}
+
 			// Import files
 			count := 0
 			for _, filePath := range validFiles {
@@ -171,43 +168,30 @@ Example:
 					continue
 				}
 
-				// Parse file
-				var title, body string
-				ext := strings.ToLower(filepath.Ext(filePath))
-
-				switch ext {
-				case ".md":
-					title, body, err = parseMdFile(content)
-					if err != nil {
-						fmt.Printf("Error parsing file %s: %v, skipping\n", filePath, err)
-						continue
-					}
-				case ".json":
-					title, body, err = parseJsonFile(content)
-					if err != nil {
-						fmt.Printf("Error parsing file %s: %v, skipping\n", filePath, err)
-						continue
-					}
-				default:
-					fmt.Printf("Unsupported file format: %s, skipping\n", ext)
+				data, err := parseImportFile(filePath, content)
+				if err != nil {
+					fmt.Printf("Error parsing file %s: %v, skipping\n", filePath, err)
 					continue
 				}
 
-				// Create memo
-				req := &docbase.CreateMemoRequest{
-					Title:  title,
-					Body:   body,
-					Draft:  draft,
-					Tags:   tagNames,
-					Scope:  scope,
-					Groups: groupIDs,
-					Notify: notify,
+				var req *docbase.CreateMemoRequest
+				req, groupMap, err = buildCreateMemoRequest(client, opts, data, groupMap)
+				if err != nil {
+					fmt.Printf("Error building request for file %s: %v, skipping\n", filePath, err)
+					continue
 				}
 
 				memo, err := client.Memo.Create(req)
 				if err != nil {
 					fmt.Printf("Error creating memo from file %s: %v, skipping\n", filePath, err)
 					continue
+				}
+
+				if data.Archived != nil && *data.Archived {
+					if err := client.Memo.Archive(memo.ID); err != nil {
+						fmt.Printf("Error archiving memo from file %s: %v, skipping\n", filePath, err)
+						continue
+					}
 				}
 
 				fmt.Printf("Imported memo ID: %d, URL: %s\n", memo.ID, memo.URL)
@@ -222,61 +206,364 @@ Example:
 	}
 )
 
-// parseMdFile parses a Markdown file with frontmatter
-func parseMdFile(content []byte) (string, string, error) {
-	contentStr := string(content)
+type importOptions struct {
+	overwrite bool
 
-	// Check if the file has frontmatter
-	if !strings.HasPrefix(contentStr, "---\n") {
-		// No frontmatter, use filename as title
-		return "Imported Memo", contentStr, nil
-	}
+	groupNames        []string
+	groupNamesChanged bool
+	fixedGroupIDs     []int
 
-	// Find the end of frontmatter
-	endIdx := strings.Index(contentStr[4:], "---\n")
-	if endIdx == -1 {
-		return "", "", fmt.Errorf("invalid frontmatter format")
-	}
-	endIdx += 4 // Adjust for the offset in the substring
+	tagNames        []string
+	tagNamesChanged bool
 
-	// Extract frontmatter and body
-	frontmatter := contentStr[4:endIdx]
-	body := contentStr[endIdx+4:]
+	draft        bool
+	draftChanged bool
 
-	// Parse frontmatter
-	var metadata map[string]interface{}
-	if err := yaml.Unmarshal([]byte(frontmatter), &metadata); err != nil {
-		return "", "", fmt.Errorf("failed to parse frontmatter: %w", err)
-	}
+	scope        string
+	scopeChanged bool
 
-	// Extract title
-	title, ok := metadata["title"].(string)
-	if !ok || title == "" {
+	notify        bool
+	notifyChanged bool
+}
+
+func getImportOptions(cmd *cobra.Command) (*importOptions, error) {
+	groupNames, _ := cmd.Flags().GetStringSlice("group")
+	tagNames, _ := cmd.Flags().GetStringSlice("tag")
+	draft, _ := cmd.Flags().GetBool("draft")
+	scope, _ := cmd.Flags().GetString("scope")
+	notify, _ := cmd.Flags().GetBool("notify")
+	overwrite, _ := cmd.Flags().GetBool("overwrite")
+
+	return &importOptions{
+		overwrite:         overwrite,
+		groupNames:        groupNames,
+		groupNamesChanged: cmd.Flags().Changed("group"),
+		tagNames:          tagNames,
+		tagNamesChanged:   cmd.Flags().Changed("tag"),
+		draft:             draft,
+		draftChanged:      cmd.Flags().Changed("draft"),
+		scope:             scope,
+		scopeChanged:      cmd.Flags().Changed("scope"),
+		notify:            notify,
+		notifyChanged:     cmd.Flags().Changed("notify"),
+	}, nil
+}
+
+type importMemoData struct {
+	Title    string
+	Body     string
+	Draft    *bool
+	Archived *bool
+	Scope    string
+	Tags     []string
+	Groups   []string
+	GroupIDs []int
+}
+
+type markdownFrontmatter struct {
+	ID       int      `yaml:"id"`
+	Title    string   `yaml:"title"`
+	Draft    *bool    `yaml:"draft"`
+	Archived *bool    `yaml:"archived"`
+	Scope    string   `yaml:"scope"`
+	Tags     []string `yaml:"tags"`
+	Groups   []string `yaml:"groups"`
+}
+
+func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *importMemoData, groupMap map[string]int) (*docbase.CreateMemoRequest, map[string]int, error) {
+	title := strings.TrimSpace(data.Title)
+	if title == "" {
 		title = "Imported Memo"
 	}
 
-	return title, body, nil
+	tags := normalizeStringSlice(data.Tags)
+	if opts.tagNamesChanged {
+		flagTags := normalizeStringSlice(opts.tagNames)
+		if opts.overwrite {
+			tags = flagTags
+		} else {
+			tags = append(tags, flagTags...)
+		}
+	}
+	tags = dedupeStrings(tags)
+
+	var fileGroupIDs []int
+	if !(opts.overwrite && opts.groupNamesChanged) {
+		groupNames := dedupeStrings(normalizeStringSlice(data.Groups))
+		if len(groupNames) > 0 {
+			if groupMap == nil {
+				var err error
+				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				if err != nil {
+					if len(data.GroupIDs) > 0 {
+						fileGroupIDs = data.GroupIDs
+					} else {
+						return nil, groupMap, err
+					}
+				}
+			}
+
+			if fileGroupIDs == nil {
+				var err error
+				fileGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, groupNames)
+				if err != nil {
+					if len(data.GroupIDs) > 0 {
+						fileGroupIDs = data.GroupIDs
+					} else {
+						return nil, groupMap, err
+					}
+				}
+			}
+		} else if len(data.GroupIDs) > 0 {
+			fileGroupIDs = data.GroupIDs
+		}
+	}
+
+	var groupIDs []int
+	if opts.groupNamesChanged {
+		if opts.overwrite {
+			groupIDs = opts.fixedGroupIDs
+		} else {
+			groupIDs = append(fileGroupIDs, opts.fixedGroupIDs...)
+		}
+	} else {
+		groupIDs = fileGroupIDs
+	}
+	groupIDs = dedupeInts(groupIDs)
+
+	draft := opts.draft
+	if !opts.draftChanged && data.Draft != nil {
+		draft = *data.Draft
+	}
+
+	scope := opts.scope
+	if !opts.scopeChanged && strings.TrimSpace(data.Scope) != "" {
+		scope = strings.TrimSpace(data.Scope)
+	}
+
+	notify := opts.notify
+
+	return &docbase.CreateMemoRequest{
+		Title:  title,
+		Body:   data.Body,
+		Draft:  draft,
+		Tags:   tags,
+		Scope:  scope,
+		Groups: groupIDs,
+		Notify: notify,
+	}, groupMap, nil
+}
+
+func normalizeStringSlice(ss []string) []string {
+	out := make([]string, 0, len(ss))
+	for _, s := range ss {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func dedupeStrings(ss []string) []string {
+	seen := make(map[string]struct{}, len(ss))
+	out := make([]string, 0, len(ss))
+	for _, s := range ss {
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}
+
+func dedupeInts(ids []int) []int {
+	seen := make(map[int]struct{}, len(ids))
+	out := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+func parseImportFile(filePath string, content []byte) (*importMemoData, error) {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".md":
+		return parseMdFile(content)
+	case ".json":
+		return parseJsonFile(content)
+	default:
+		return nil, fmt.Errorf("unsupported file format: %s", ext)
+	}
+}
+
+// parseMdFile parses a Markdown file with frontmatter
+func parseMdFile(content []byte) (*importMemoData, error) {
+	contentStr := string(content)
+
+	// Check if the file has frontmatter
+	if !strings.HasPrefix(contentStr, "---\n") && !strings.HasPrefix(contentStr, "---\r\n") {
+		// No frontmatter
+		return &importMemoData{
+			Title: "Imported Memo",
+			Body:  contentStr,
+		}, nil
+	}
+
+	// Skip the opening delimiter line (---)
+	openingNewlineIdx := strings.IndexByte(contentStr, '\n')
+	if openingNewlineIdx == -1 {
+		return nil, fmt.Errorf("invalid frontmatter format: missing newline after opening delimiter")
+	}
+
+	frontmatterStart := openingNewlineIdx + 1
+	pos := frontmatterStart
+
+	for {
+		if pos >= len(contentStr) {
+			return nil, fmt.Errorf("invalid frontmatter format: missing closing delimiter")
+		}
+
+		lineEnd := strings.IndexByte(contentStr[pos:], '\n')
+		var line string
+		var nextPos int
+		if lineEnd == -1 {
+			line = contentStr[pos:]
+			nextPos = len(contentStr)
+		} else {
+			line = contentStr[pos : pos+lineEnd]
+			nextPos = pos + lineEnd + 1
+		}
+
+		line = strings.TrimSuffix(line, "\r")
+		if line == "---" {
+			frontmatterRaw := contentStr[frontmatterStart:pos]
+			body := contentStr[nextPos:]
+
+			frontmatter := strings.ReplaceAll(frontmatterRaw, "\r\n", "\n")
+
+			// Parse frontmatter
+			var metadata markdownFrontmatter
+			if err := yaml.Unmarshal([]byte(frontmatter), &metadata); err != nil {
+				return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
+			}
+
+			if strings.HasPrefix(body, "\r\n") {
+				body = strings.TrimPrefix(body, "\r\n")
+			} else if strings.HasPrefix(body, "\n") {
+				body = strings.TrimPrefix(body, "\n")
+			}
+
+			title := strings.TrimSpace(metadata.Title)
+			if title == "" {
+				title = "Imported Memo"
+			}
+
+			return &importMemoData{
+				Title:    title,
+				Body:     body,
+				Draft:    metadata.Draft,
+				Archived: metadata.Archived,
+				Scope:    metadata.Scope,
+				Tags:     metadata.Tags,
+				Groups:   metadata.Groups,
+			}, nil
+		}
+
+		pos = nextPos
+	}
 }
 
 // parseJsonFile parses a JSON file
-func parseJsonFile(content []byte) (string, string, error) {
-	var data map[string]interface{}
-	if err := json.Unmarshal(content, &data); err != nil {
-		return "", "", fmt.Errorf("failed to parse JSON: %w", err)
+func parseJsonFile(content []byte) (*importMemoData, error) {
+	var memoResp docbase.MemoResponse
+	if err := json.Unmarshal(content, &memoResp); err == nil && memoResp.Memo.ID != 0 {
+		return memoToImportMemoData(&memoResp.Memo), nil
 	}
 
-	// Extract title and body
+	var memo docbase.Memo
+	if err := json.Unmarshal(content, &memo); err == nil && memo.ID != 0 {
+		return memoToImportMemoData(&memo), nil
+	}
+
+	type createMemoRequestJSON struct {
+		Title  string   `json:"title"`
+		Body   string   `json:"body"`
+		Draft  *bool    `json:"draft"`
+		Tags   []string `json:"tags"`
+		Scope  string   `json:"scope"`
+		Groups []int    `json:"groups"`
+	}
+	var createReq createMemoRequestJSON
+	if err := json.Unmarshal(content, &createReq); err == nil && createReq.Body != "" {
+		title := strings.TrimSpace(createReq.Title)
+		if title == "" {
+			title = "Imported Memo"
+		}
+		return &importMemoData{
+			Title:    title,
+			Body:     createReq.Body,
+			Draft:    createReq.Draft,
+			Scope:    createReq.Scope,
+			Tags:     createReq.Tags,
+			GroupIDs: createReq.Groups,
+		}, nil
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(content, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
 	title, ok := data["title"].(string)
-	if !ok || title == "" {
+	if !ok || strings.TrimSpace(title) == "" {
 		title = "Imported Memo"
 	}
 
 	body, ok := data["body"].(string)
 	if !ok || body == "" {
-		return "", "", fmt.Errorf("body not found in JSON")
+		return nil, fmt.Errorf("body not found in JSON")
 	}
 
-	return title, body, nil
+	return &importMemoData{
+		Title: title,
+		Body:  body,
+	}, nil
+}
+
+func memoToImportMemoData(memo *docbase.Memo) *importMemoData {
+	tags := make([]string, 0, len(memo.Tags))
+	for _, tag := range memo.Tags {
+		tags = append(tags, tag.Name)
+	}
+
+	groups := make([]string, 0, len(memo.Groups))
+	groupIDs := make([]int, 0, len(memo.Groups))
+	for _, group := range memo.Groups {
+		groups = append(groups, group.Name)
+		groupIDs = append(groupIDs, group.ID)
+	}
+
+	draft := memo.Draft
+	archived := memo.Archived
+
+	return &importMemoData{
+		Title:    memo.Title,
+		Body:     memo.Body,
+		Draft:    &draft,
+		Archived: &archived,
+		Scope:    memo.Scope,
+		Tags:     tags,
+		Groups:   groups,
+		GroupIDs: groupIDs,
+	}
 }
 
 func init() {
@@ -290,6 +577,7 @@ func init() {
 	// Add flags to file command
 	FileCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
 	FileCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
+	FileCmd.Flags().Bool("overwrite", false, "Overwrite tags/groups from file with --tag/--group (default: merge)")
 	FileCmd.Flags().Bool("draft", false, "Save as draft")
 	FileCmd.Flags().String("scope", "group", "Memo scope (group, private)")
 	FileCmd.Flags().Bool("notify", false, "Send notification")
@@ -297,6 +585,7 @@ func init() {
 	// Add flags to dir command
 	DirCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
 	DirCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
+	DirCmd.Flags().Bool("overwrite", false, "Overwrite tags/groups from file with --tag/--group (default: merge)")
 	DirCmd.Flags().Bool("draft", false, "Save as draft")
 	DirCmd.Flags().String("scope", "group", "Memo scope (group, private)")
 	DirCmd.Flags().Bool("notify", false, "Send notification")

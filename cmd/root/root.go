@@ -16,11 +16,11 @@ var (
 )
 
 var (
-	cfgFile     string
-	teamDomain  string
-	accessToken string
+	cfgFile      string
+	teamDomain   string
+	accessToken  string
 	outputFormat string
-	verbose     bool
+	verbose      bool
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
@@ -80,7 +80,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".config/docbase" (without extension).
 		configDir := filepath.Join(home, ".config", "docbase")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
+		if err := os.MkdirAll(configDir, 0700); err != nil {
 			fmt.Println("Error creating config directory:", err)
 			os.Exit(1)
 		}
@@ -93,10 +93,14 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		if verbose {
-			fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		// No config file is fine; parse/permission errors should be surfaced.
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			fmt.Fprintln(os.Stderr, "Error reading config file:", err)
+			os.Exit(1)
 		}
+	} else if verbose {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
 
