@@ -455,10 +455,10 @@ func parseMdFile(content []byte) (*importMemoData, error) {
 				return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
 			}
 
-			if strings.HasPrefix(body, "\r\n") {
-				body = strings.TrimPrefix(body, "\r\n")
-			} else if strings.HasPrefix(body, "\n") {
-				body = strings.TrimPrefix(body, "\n")
+			if after, ok := strings.CutPrefix(body, "\r\n"); ok {
+				body = after
+			} else if after, ok := strings.CutPrefix(body, "\n"); ok {
+				body = after
 			}
 
 			title := strings.TrimSpace(metadata.Title)
@@ -517,7 +517,7 @@ func parseJsonFile(content []byte) (*importMemoData, error) {
 		}, nil
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(content, &data); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
