@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/groups"
 	"github.com/basi/docbase-cli/pkg/docbase"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // Note: We use import_cmd as the package name because "import" is a reserved keyword in Go

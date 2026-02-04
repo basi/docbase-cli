@@ -3,11 +3,12 @@ package auth
 import (
 	"fmt"
 
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/config"
 	"github.com/basi/docbase-cli/pkg/docbase"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
 )
 
 var (

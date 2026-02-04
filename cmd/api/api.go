@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -215,9 +216,9 @@ func init() {
 
 	// Add flags to post command
 	PostCmd.Flags().String("data", "", "JSON data for the request")
-	PostCmd.MarkFlagRequired("data")
+	_ = PostCmd.MarkFlagRequired("data")
 
 	// Add flags to put command
 	PutCmd.Flags().String("data", "", "JSON data for the request")
-	PutCmd.MarkFlagRequired("data")
+	_ = PutCmd.MarkFlagRequired("data")
 }

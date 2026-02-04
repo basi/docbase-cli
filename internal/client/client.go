@@ -3,9 +3,10 @@ package client
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/basi/docbase-cli/internal/config"
 	"github.com/basi/docbase-cli/pkg/docbase"
-	"github.com/spf13/cobra"
 )
 
 // CheckRequiredFlags checks if the required flags are set

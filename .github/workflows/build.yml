@@ -16,9 +16,20 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: '1.25'
-      
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6.5.2
+        with:
+          version: latest
+          # Build from source to ensure compatibility with Go 1.25+
+          # (pre-built binaries may be compiled with older Go versions)
+          install-mode: goinstall
+
+      - name: Modernize
+        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest ./...
+
       - name: Build
         run: go build -o docbase-cli .
-      
+
       - name: Test
         run: go test -v ./...
