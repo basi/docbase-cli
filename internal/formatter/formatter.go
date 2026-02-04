@@ -45,7 +45,7 @@ func NewFormatter(format string, writer io.Writer, useColor bool) *Formatter {
 }
 
 // Print prints the data in the specified format
-func (f *Formatter) Print(data interface{}) error {
+func (f *Formatter) Print(data any) error {
 	switch f.Format {
 	case FormatJSON:
 		return f.printJSON(data)
@@ -57,7 +57,7 @@ func (f *Formatter) Print(data interface{}) error {
 }
 
 // printJSON prints the data in JSON format
-func (f *Formatter) printJSON(data interface{}) error {
+func (f *Formatter) printJSON(data any) error {
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func (f *Formatter) printJSON(data interface{}) error {
 }
 
 // printYAML prints the data in YAML format
-func (f *Formatter) printYAML(data interface{}) error {
+func (f *Formatter) printYAML(data any) error {
 	bytes, err := yaml.Marshal(data)
 	if err != nil {
 		return err
@@ -79,11 +79,11 @@ func (f *Formatter) printYAML(data interface{}) error {
 }
 
 // printText prints the data in text format
-func (f *Formatter) printText(data interface{}) error {
+func (f *Formatter) printText(data any) error {
 	switch v := data.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		return f.printMap(v, 0)
-	case []interface{}:
+	case []any:
 		return f.printSlice(v, 0)
 	default:
 		_, err := fmt.Fprintln(f.Writer, v)
@@ -92,7 +92,7 @@ func (f *Formatter) printText(data interface{}) error {
 }
 
 // printMap prints a map in text format
-func (f *Formatter) printMap(m map[string]interface{}, indent int) error {
+func (f *Formatter) printMap(m map[string]any, indent int) error {
 	for k, v := range m {
 		indentStr := strings.Repeat("  ", indent)
 		key := k
@@ -101,7 +101,7 @@ func (f *Formatter) printMap(m map[string]interface{}, indent int) error {
 		}
 
 		switch val := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			_, err := fmt.Fprintf(f.Writer, "%s%s:\n", indentStr, key)
 			if err != nil {
 				return err
@@ -110,7 +110,7 @@ func (f *Formatter) printMap(m map[string]interface{}, indent int) error {
 			if err != nil {
 				return err
 			}
-		case []interface{}:
+		case []any:
 			_, err := fmt.Fprintf(f.Writer, "%s%s:\n", indentStr, key)
 			if err != nil {
 				return err
@@ -135,11 +135,11 @@ func (f *Formatter) printMap(m map[string]interface{}, indent int) error {
 }
 
 // printSlice prints a slice in text format
-func (f *Formatter) printSlice(s []interface{}, indent int) error {
+func (f *Formatter) printSlice(s []any, indent int) error {
 	for i, v := range s {
 		indentStr := strings.Repeat("  ", indent)
 		switch val := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			_, err := fmt.Fprintf(f.Writer, "%s%d:\n", indentStr, i)
 			if err != nil {
 				return err
@@ -148,7 +148,7 @@ func (f *Formatter) printSlice(s []interface{}, indent int) error {
 			if err != nil {
 				return err
 			}
-		case []interface{}:
+		case []any:
 			_, err := fmt.Fprintf(f.Writer, "%s%d:\n", indentStr, i)
 			if err != nil {
 				return err

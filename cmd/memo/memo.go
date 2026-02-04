@@ -3,6 +3,7 @@ package memo
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -328,13 +329,7 @@ Example:
 				tags = append(tags, tag.Name)
 			}
 			// Add delete tag if not already present
-			hasDeleteTag := false
-			for _, tag := range tags {
-				if tag == "delete" {
-					hasDeleteTag = true
-					break
-				}
-			}
+			hasDeleteTag := slices.Contains(tags, "delete")
 			if !hasDeleteTag {
 				tags = append(tags, "delete")
 			}

@@ -62,7 +62,7 @@ func (c *Client) errorFromResponse(resp *resty.Response) error {
 }
 
 // Request performs the API request and handles standard error checking and unmarshaling
-func (c *Client) Request(method, path string, body interface{}, result interface{}, opts ...RequestOption) error {
+func (c *Client) Request(method, path string, body any, result any, opts ...RequestOption) error {
 	url := c.buildURL(path, nil)
 	req := c.httpClient.R()
 
@@ -141,13 +141,13 @@ func (c *Client) Get(path string, params map[string]string) (*resty.Response, er
 }
 
 // Post sends a POST request to the API
-func (c *Client) Post(path string, body interface{}) (*resty.Response, error) {
+func (c *Client) Post(path string, body any) (*resty.Response, error) {
 	url := c.buildURL(path, nil)
 	return c.httpClient.R().SetBody(body).Post(url)
 }
 
 // Put sends a PUT request to the API
-func (c *Client) Put(path string, body interface{}) (*resty.Response, error) {
+func (c *Client) Put(path string, body any) (*resty.Response, error) {
 	url := c.buildURL(path, nil)
 	return c.httpClient.R().SetBody(body).Put(url)
 }

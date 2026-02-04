@@ -46,8 +46,8 @@ Example:
 			if strings.Contains(path, "?") {
 				parts := strings.SplitN(path, "?", 2)
 				path = parts[0]
-				queryParams := strings.Split(parts[1], "&")
-				for _, param := range queryParams {
+				queryParams := strings.SplitSeq(parts[1], "&")
+				for param := range queryParams {
 					if strings.Contains(param, "=") {
 						kv := strings.SplitN(param, "=", 2)
 						params[kv[0]] = kv[1]
@@ -65,7 +65,7 @@ Example:
 			}
 
 			// Parse response as JSON
-			var data interface{}
+			var data any
 			if err := json.Unmarshal(resp.Body(), &data); err != nil {
 				return fmt.Errorf("failed to parse response: %w", err)
 			}
@@ -98,7 +98,7 @@ Example:
 			}
 
 			// Parse data as JSON
-			var jsonData interface{}
+			var jsonData any
 			if err := json.Unmarshal([]byte(data), &jsonData); err != nil {
 				return fmt.Errorf("invalid JSON data: %w", err)
 			}
@@ -113,7 +113,7 @@ Example:
 			}
 
 			// Parse response as JSON
-			var respData interface{}
+			var respData any
 			if err := json.Unmarshal(resp.Body(), &respData); err != nil {
 				return fmt.Errorf("failed to parse response: %w", err)
 			}
@@ -146,7 +146,7 @@ Example:
 			}
 
 			// Parse data as JSON
-			var jsonData interface{}
+			var jsonData any
 			if err := json.Unmarshal([]byte(data), &jsonData); err != nil {
 				return fmt.Errorf("invalid JSON data: %w", err)
 			}
@@ -161,7 +161,7 @@ Example:
 			}
 
 			// Parse response as JSON
-			var respData interface{}
+			var respData any
 			if err := json.Unmarshal(resp.Body(), &respData); err != nil {
 				return fmt.Errorf("failed to parse response: %w", err)
 			}

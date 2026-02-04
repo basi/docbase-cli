@@ -107,7 +107,7 @@ Example:
 			f := formatter.NewFormatter(outputFormat, os.Stdout, true)
 
 			// Mask the access token for security
-			configMap := map[string]interface{}{
+			configMap := map[string]any{
 				"team_domain":   cfg.TeamDomain,
 				"access_token":  "********",
 				"output_format": cfg.OutputFormat,

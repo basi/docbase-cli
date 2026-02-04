@@ -8,23 +8,23 @@ import (
 
 // API represents the DocBase API client
 type API struct {
-	client   *Client
-	Memo     *MemoService
-	Group    *GroupService
-	Tag      *TagService
-	Comment  *CommentService
+	client  *Client
+	Memo    *MemoService
+	Group   *GroupService
+	Tag     *TagService
+	Comment *CommentService
 }
 
 // NewAPI creates a new DocBase API client
 func NewAPI(teamDomain, accessToken string) *API {
 	client := NewClient(teamDomain, accessToken)
-	
+
 	return &API{
-		client:   client,
-		Memo:     NewMemoService(client),
-		Group:    NewGroupService(client),
-		Tag:      NewTagService(client),
-		Comment:  NewCommentService(client),
+		client:  client,
+		Memo:    NewMemoService(client),
+		Group:   NewGroupService(client),
+		Tag:     NewTagService(client),
+		Comment: NewCommentService(client),
 	}
 }
 
@@ -44,12 +44,12 @@ func (a *API) Get(path string, params map[string]string) (*resty.Response, error
 }
 
 // Post sends a POST request to the API
-func (a *API) Post(path string, body interface{}) (*resty.Response, error) {
+func (a *API) Post(path string, body any) (*resty.Response, error) {
 	return a.client.Post(path, body)
 }
 
 // Put sends a PUT request to the API
-func (a *API) Put(path string, body interface{}) (*resty.Response, error) {
+func (a *API) Put(path string, body any) (*resty.Response, error) {
 	return a.client.Put(path, body)
 }
 
