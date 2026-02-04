@@ -38,12 +38,21 @@ func (s *TagService) List(page, perPage int) (*TagListResponse, error) {
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
-	var tagList TagListResponse
-	if err := json.Unmarshal(resp.Body(), &tagList); err != nil {
+	// The tags API returns a plain array, not a wrapped object
+	var tags []Tag
+	if err := json.Unmarshal(resp.Body(), &tags); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return &tagList, nil
+	// Build the response manually since there's no meta in the API response
+	tagList := &TagListResponse{
+		Tags: tags,
+		Meta: Meta{
+			Total: len(tags),
+		},
+	}
+
+	return tagList, nil
 }
 
 // Search searches for tags by name
@@ -67,10 +76,19 @@ func (s *TagService) Search(query string, page, perPage int) (*TagListResponse, 
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
-	var tagList TagListResponse
-	if err := json.Unmarshal(resp.Body(), &tagList); err != nil {
+	// The tags API returns a plain array, not a wrapped object
+	var tags []Tag
+	if err := json.Unmarshal(resp.Body(), &tags); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return &tagList, nil
+	// Build the response manually since there's no meta in the API response
+	tagList := &TagListResponse{
+		Tags: tags,
+		Meta: Meta{
+			Total: len(tags),
+		},
+	}
+
+	return tagList, nil
 }
