@@ -209,6 +209,12 @@ make build
 make install
 ```
 
+Make sure that `$(go env GOPATH)/bin` (usually `~/go/bin`) is in your `PATH`.
+
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
 ## License
 
 MIT
