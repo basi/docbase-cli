@@ -21,6 +21,11 @@ DocBase CLI is a command-line interface for [DocBase](https://docbase.io/), a kn
 
 For a detailed list of changes and version history, please see the [CHANGELOG.md](CHANGELOG.md) file.
 
+## API Spec
+
+For details on the API specification, please refer to the following documentation:
+[DocBase API Spec](https://help.docbase.io/posts/45703)
+
 ## Installation
 
 ### Using Homebrew (macOS and Linux)
@@ -154,6 +159,9 @@ docbase export tag "週報" --output ./exports
 
 # Import a memo from a file
 docbase import file ./memo.md --group "全員"
+
+# Overwrite tags/groups from file (default is to merge)
+docbase import file ./memo.md --group "全員" --overwrite
 
 # Import memos from a directory
 docbase import dir ./exports --group "全員"

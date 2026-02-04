@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,14 +36,14 @@ func Save(config *Config) error {
 
 	configFile := viper.ConfigFileUsed()
 	if configFile == "" {
-		// If no config file is used, create one
+		// If no config file is set, create one in the default location
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return fmt.Errorf("failed to get home directory: %w", err)
 		}
 
 		configDir := filepath.Join(home, ".config", "docbase")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
+		if err := os.MkdirAll(configDir, 0700); err != nil {
 			return fmt.Errorf("failed to create config directory: %w", err)
 		}
 
@@ -50,16 +51,45 @@ func Save(config *Config) error {
 		viper.SetConfigFile(configFile)
 	}
 
-	if err := viper.WriteConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found, create it
-			if err := viper.SafeWriteConfig(); err != nil {
-				return fmt.Errorf("failed to write config file: %w", err)
-			}
-		} else {
-			return fmt.Errorf("failed to write config file: %w", err)
+	// Ensure parent directory exists (supports custom --config paths)
+	if err := os.MkdirAll(filepath.Dir(configFile), 0700); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Write config with restrictive permissions (access token is included)
+	bytes, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+	bytes = append(bytes, '\n')
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(configFile), filepath.Base(configFile)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp config file: %w", err)
+	}
+	tmpName := tmpFile.Name()
+	defer os.Remove(tmpName)
+
+	if _, err := tmpFile.Write(bytes); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp config file: %w", err)
+	}
+
+	// On Unix, CreateTemp is 0600 by default, but enforce it for safety.
+	_ = os.Chmod(tmpName, 0600)
+
+	// Atomic replace on Unix; on Windows, rename fails if the destination exists.
+	if err := os.Rename(tmpName, configFile); err != nil {
+		_ = os.Remove(configFile)
+		if err2 := os.Rename(tmpName, configFile); err2 != nil {
+			return fmt.Errorf("failed to replace config file: %w", err2)
 		}
 	}
+
+	_ = os.Chmod(configFile, 0600)
 
 	return nil
 }

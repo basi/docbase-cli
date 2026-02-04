@@ -31,76 +31,47 @@ func (s *GroupService) List(page, perPage int) (*GroupListResponse, error) {
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
+		return nil, s.client.errorFromResponse(resp)
 	}
 
-	// まずオブジェクト形式として解析を試みる
-	var groupList GroupListResponse
-	if err := json.Unmarshal(resp.Body(), &groupList); err == nil {
-		return &groupList, nil
-	}
-
-	// オブジェクト形式での解析に失敗した場合、配列形式として解析を試みる
 	var groups []Group
 	if err := json.Unmarshal(resp.Body(), &groups); err != nil {
-		// デバッグ情報を含めたエラーメッセージを返す
-		return nil, fmt.Errorf("failed to parse response as object or array: %w, response body: %s", err, string(resp.Body()))
+		return nil, fmt.Errorf("failed to parse groups response: %w", err)
 	}
 
-	// 配列形式のレスポンスを GroupListResponse 形式に変換
-	return &GroupListResponse{
+	groupList := &GroupListResponse{
 		Groups: groups,
-	}, nil
+		Meta: Meta{
+			Total: len(groups),
+		},
+	}
+	if perPage > 0 && len(groups) == perPage {
+		nextPage := strconv.Itoa(page + 1)
+		groupList.Meta.NextPage = &nextPage
+	}
+
+	return groupList, nil
 }
 
 // Get returns a group by ID
 func (s *GroupService) Get(id int) (*Group, error) {
 	path := fmt.Sprintf("/groups/%d", id)
-	resp, err := s.client.Get(path, nil)
-	if err != nil {
+	var group Group
+	if err := s.client.Request("GET", path, nil, &group); err != nil {
 		return nil, err
 	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
+	if group.ID == 0 {
+		return nil, fmt.Errorf("failed to parse group response: %d", id)
 	}
 
-	var groupResp GroupResponse
-	if err := json.Unmarshal(resp.Body(), &groupResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &groupResp.Group, nil
+	return &group, nil
 }
 
 // GetMembers returns the members of a group
 func (s *GroupService) GetMembers(id int) ([]User, error) {
-	// DocBase API returns users as part of the group detail response
-	path := fmt.Sprintf("/groups/%d", id)
-	resp, err := s.client.Get(path, nil)
+	group, err := s.Get(id)
 	if err != nil {
 		return nil, err
-	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
-	}
-
-	var group Group
-	if err := json.Unmarshal(resp.Body(), &group); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	return group.Users, nil

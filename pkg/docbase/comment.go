@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // CommentService handles communication with the comment related methods of the DocBase API
@@ -26,22 +28,11 @@ func (s *CommentService) List(memoID, page, perPage int) (*CommentListResponse, 
 		"per_page": strconv.Itoa(perPage),
 	}
 
-	resp, err := s.client.Get(path, params)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
-	}
-
 	var commentList CommentListResponse
-	if err := json.Unmarshal(resp.Body(), &commentList); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if err := s.client.Request("GET", path, nil, &commentList, func(r *resty.Request) {
+		r.SetQueryParams(params)
+	}); err != nil {
+		return nil, err
 	}
 
 	return &commentList, nil
@@ -56,36 +47,26 @@ func (s *CommentService) Create(memoID int, req *CreateCommentRequest) (*Comment
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
+		return nil, s.client.errorFromResponse(resp)
+	}
+
+	body := resp.Body()
+
+	var commentResp CommentResponse
+	if err := json.Unmarshal(body, &commentResp); err == nil && commentResp.Comment.ID != 0 {
+		return &commentResp.Comment, nil
 	}
 
 	var comment Comment
-	if err := json.Unmarshal(resp.Body(), &comment); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if err := json.Unmarshal(body, &comment); err == nil && comment.ID != 0 {
+		return &comment, nil
 	}
 
-	return &comment, nil
+	return nil, fmt.Errorf("failed to parse create comment response")
 }
 
 // Delete deletes a comment
 func (s *CommentService) Delete(commentID int) error {
 	path := fmt.Sprintf("/comments/%d", commentID)
-	resp, err := s.client.Delete(path)
-	if err != nil {
-		return err
-	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return fmt.Errorf("API error: %s", errResp.Messages)
-	}
-
-	return nil
+	return s.client.Request("DELETE", path, nil, nil)
 }

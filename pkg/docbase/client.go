@@ -1,6 +1,7 @@
 package docbase
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -12,7 +13,7 @@ const (
 	// BaseURL is the base URL of DocBase API
 	BaseURL = "https://api.docbase.io"
 	// APIVersion is the version of DocBase API
-	APIVersion = "2"
+	APIVersion = "3"
 	// DefaultTimeout is the default timeout for API requests
 	DefaultTimeout = 30 * time.Second
 )
@@ -41,6 +42,71 @@ func NewClient(teamDomain, accessToken string) *Client {
 	}
 }
 
+// RequestOption allows setting custom options for requests
+type RequestOption func(*resty.Request)
+
+func (c *Client) errorFromResponse(resp *resty.Response) error {
+	var errResp ErrorResponse
+	if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
+		return fmt.Errorf("failed to parse error response: %w, status: %s", err, resp.Status())
+	}
+
+	// Improve error message
+	errMsg := resp.Status()
+	if len(errResp.Messages) > 0 {
+		errMsg = fmt.Sprintf("%v", errResp.Messages)
+	} else if errResp.Error != "" {
+		errMsg = errResp.Error
+	}
+	return fmt.Errorf("API error: %s", errMsg)
+}
+
+// Request performs the API request and handles standard error checking and unmarshaling
+func (c *Client) Request(method, path string, body interface{}, result interface{}, opts ...RequestOption) error {
+	url := c.buildURL(path, nil)
+	req := c.httpClient.R()
+
+	if body != nil {
+		req.SetBody(body)
+	}
+
+	for _, opt := range opts {
+		opt(req)
+	}
+
+	var resp *resty.Response
+	var err error
+
+	switch method {
+	case "GET":
+		resp, err = req.Get(url)
+	case "POST":
+		resp, err = req.Post(url)
+	case "PUT":
+		resp, err = req.Put(url)
+	case "DELETE":
+		resp, err = req.Delete(url)
+	default:
+		return fmt.Errorf("unsupported method: %s", method)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if resp.IsError() {
+		return c.errorFromResponse(resp)
+	}
+
+	if result != nil {
+		if err := json.Unmarshal(resp.Body(), result); err != nil {
+			return fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // SetBaseURL sets the base URL of the API
 func (c *Client) SetBaseURL(baseURL string) {
 	c.BaseURL = baseURL
@@ -54,7 +120,7 @@ func (c *Client) SetTimeout(timeout time.Duration) {
 // buildURL builds the URL for the API request
 func (c *Client) buildURL(path string, params map[string]string) string {
 	baseURL := fmt.Sprintf("%s/teams/%s%s", c.BaseURL, c.TeamDomain, path)
-	
+
 	if len(params) == 0 {
 		return baseURL
 	}

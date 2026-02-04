@@ -2,8 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/basi/docbase-cli/internal/config"
@@ -46,7 +47,7 @@ func CreateClient(cmd *cobra.Command) (*docbase.API, error) {
 func ReadFile(filePath string) (string, error) {
 	if filePath == "-" {
 		// Read from stdin
-		bytes, err := ioutil.ReadAll(os.Stdin)
+		bytes, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", fmt.Errorf("failed to read from stdin: %w", err)
 		}
@@ -54,7 +55,7 @@ func ReadFile(filePath string) (string, error) {
 	}
 
 	// Read from file
-	bytes, err := ioutil.ReadFile(filePath)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
@@ -99,10 +100,80 @@ func FormatGroups(groups []docbase.Group) string {
 	return strings.Join(groupNames, ", ")
 }
 
-// TruncateString truncates a string to the specified length
+// BuildGroupNameToIDMap retrieves all groups and returns a map of group name -> group ID.
+func BuildGroupNameToIDMap(client *docbase.API) (map[string]int, error) {
+	groupMap := make(map[string]int)
+	page := 1
+	perPage := 200
+
+	for {
+		groups, err := client.Group.List(page, perPage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve group list: %w", err)
+		}
+
+		for _, group := range groups.Groups {
+			groupMap[group.Name] = group.ID
+		}
+
+		if len(groups.Groups) < perPage {
+			break
+		}
+		page++
+	}
+
+	return groupMap, nil
+}
+
+// ResolveGroupIDsFromMap resolves group names to IDs using a pre-built map.
+func ResolveGroupIDsFromMap(groupMap map[string]int, groupNames []string) ([]int, error) {
+	if len(groupNames) == 0 {
+		return nil, nil
+	}
+
+	groupIDs := make([]int, 0, len(groupNames))
+	for _, name := range groupNames {
+		id, ok := groupMap[name]
+		if !ok {
+			availableGroups := make([]string, 0, len(groupMap))
+			for groupName := range groupMap {
+				availableGroups = append(availableGroups, groupName)
+			}
+			sort.Strings(availableGroups)
+			return nil, fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
+		}
+		groupIDs = append(groupIDs, id)
+	}
+
+	return groupIDs, nil
+}
+
+// ResolveGroupIDs resolves group names to group IDs
+func ResolveGroupIDs(client *docbase.API, groupNames []string) ([]int, error) {
+	if len(groupNames) == 0 {
+		return nil, nil
+	}
+
+	groupMap, err := BuildGroupNameToIDMap(client)
+	if err != nil {
+		return nil, err
+	}
+
+	return ResolveGroupIDsFromMap(groupMap, groupNames)
+}
+
+// TruncateString truncates a string to the specified length (rune-aware for multibyte characters)
 func TruncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	if maxLen <= 0 {
+		return ""
+	}
+	if maxLen <= 3 {
+		return s[:min(len(s), maxLen)]
+	}
+
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
 }

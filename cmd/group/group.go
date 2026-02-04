@@ -48,22 +48,20 @@ Example:
 
 			if outputFormat == "text" {
 				// Custom text format for list
-				fmt.Printf("Total: %d\n", groupList.Meta.Total)
+				fmt.Printf("Count: %d\n", len(groupList.Groups))
 				fmt.Println(strings.Repeat("-", 80))
-				fmt.Printf("%-8s %-40s %s\n", "ID", "Name", "Created At")
+				fmt.Printf("%-8s %s\n", "ID", "Name")
 				fmt.Println(strings.Repeat("-", 80))
 
 				for _, group := range groupList.Groups {
-					fmt.Printf("%-8d %-40s %s\n",
+					fmt.Printf("%-8d %s\n",
 						group.ID,
 						utils.TruncateString(group.Name, 37),
-						group.CreatedAt.Format("2006-01-02 15:04:05"),
 					)
 				}
 
-				if groupList.Meta.NextPage != nil {
-					nextPage, _ := strconv.Atoi(*groupList.Meta.NextPage)
-					fmt.Printf("\nUse --page %d to see the next page\n", nextPage)
+				if len(groupList.Groups) == perPage {
+					fmt.Printf("\nUse --page %d to see the next page\n", page+1)
 				}
 				return nil
 			}
@@ -108,6 +106,11 @@ Example:
 				if group.Description != "" {
 					fmt.Printf("Description: %s\n", group.Description)
 				}
+				fmt.Printf("Posts Count: %d\n", group.PostsCount)
+				if group.LastActivityAt != nil {
+					fmt.Printf("Last Activity At: %s\n", group.LastActivityAt.Format("2006-01-02 15:04:05"))
+				}
+				fmt.Printf("Members: %d\n", len(group.Users))
 				return nil
 			}
 
@@ -148,15 +151,15 @@ Example:
 				fmt.Printf("Group ID: %d\n", id)
 				fmt.Printf("Total Members: %d\n", len(members))
 				fmt.Println(strings.Repeat("-", 80))
-				fmt.Printf("%-8s %-30s %-30s %s\n", "ID", "Name", "Username", "Created At")
+				fmt.Printf("%-8s %-30s %-8s %s\n", "ID", "Name", "Admin", "Profile Image URL")
 				fmt.Println(strings.Repeat("-", 80))
 
 				for _, member := range members {
-					fmt.Printf("%-8d %-30s %-30s %s\n",
+					fmt.Printf("%-8d %-30s %-8t %s\n",
 						member.ID,
 						utils.TruncateString(member.Name, 27),
-						utils.TruncateString(member.Username, 27),
-						member.CreatedAt.Format("2006-01-02 15:04:05"),
+						member.Admin,
+						utils.TruncateString(member.ProfileImageURL, 40),
 					)
 				}
 				return nil
