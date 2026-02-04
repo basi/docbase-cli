@@ -1,6 +1,7 @@
 BINARY_NAME=docbase
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GOPATH ?= $(shell go env GOPATH)
 LDFLAGS=-ldflags "-X github.com/basi/docbase-cli/cmd/root.Version=$(VERSION) -X github.com/basi/docbase-cli/cmd/root.BuildTime=$(BUILD_TIME)"
 
 .PHONY: all build clean install test lint fmt vet
