@@ -12,7 +12,7 @@ const (
 	// BaseURL is the base URL of DocBase API
 	BaseURL = "https://api.docbase.io"
 	// APIVersion is the version of DocBase API
-	APIVersion = "2"
+	APIVersion = "3"
 	// DefaultTimeout is the default timeout for API requests
 	DefaultTimeout = 30 * time.Second
 )
