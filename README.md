@@ -1,5 +1,8 @@
 # DocBase CLI
 
+> [!WARNING]
+> **Experimental**: This CLI is still in development and may have breaking changes.
+
 DocBase CLI is a command-line interface for [DocBase](https://docbase.io/), a knowledge-sharing platform for teams. It allows you to interact with DocBase from the command line, making it easy to automate tasks and integrate with other tools.
 
 ## Features
