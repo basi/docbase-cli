@@ -135,32 +135,27 @@ Example:
 
 	// DeleteCmd represents the comment delete command
 	DeleteCmd = &cobra.Command{
-		Use:   "delete [memo_id] [comment_id]",
+		Use:   "delete [comment_id]",
 		Short: "Delete a comment",
-		Long: `Delete a comment from a memo in DocBase.
+		Long: `Delete a comment from DocBase.
 
 Example:
-  docbase comment delete 12345 67890`,
-		Args: cobra.ExactArgs(2),
+  docbase comment delete 67890`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := utils.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
 
-			memoID, err := strconv.Atoi(args[0])
+			commentID, err := strconv.Atoi(args[0])
 			if err != nil {
-				return fmt.Errorf("invalid memo ID: %s", args[0])
-			}
-
-			commentID, err := strconv.Atoi(args[1])
-			if err != nil {
-				return fmt.Errorf("invalid comment ID: %s", args[1])
+				return fmt.Errorf("invalid comment ID: %s", args[0])
 			}
 
 			force, _ := cmd.Flags().GetBool("force")
 			if !force {
-				fmt.Printf("Are you sure you want to delete comment %d from memo %d? (y/N): ", commentID, memoID)
+				fmt.Printf("Are you sure you want to delete comment %d? (y/N): ", commentID)
 				var confirm string
 				fmt.Scanln(&confirm)
 				if strings.ToLower(confirm) != "y" {
@@ -169,7 +164,7 @@ Example:
 				}
 			}
 
-			if err := client.Comment.Delete(memoID, commentID); err != nil {
+			if err := client.Comment.Delete(commentID); err != nil {
 				return err
 			}
 
