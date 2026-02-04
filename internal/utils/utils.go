@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -46,7 +46,7 @@ func CreateClient(cmd *cobra.Command) (*docbase.API, error) {
 func ReadFile(filePath string) (string, error) {
 	if filePath == "-" {
 		// Read from stdin
-		bytes, err := ioutil.ReadAll(os.Stdin)
+		bytes, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", fmt.Errorf("failed to read from stdin: %w", err)
 		}
@@ -54,7 +54,7 @@ func ReadFile(filePath string) (string, error) {
 	}
 
 	// Read from file
-	bytes, err := ioutil.ReadFile(filePath)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}

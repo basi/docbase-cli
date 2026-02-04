@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // GroupService handles communication with the group related methods of the DocBase API
@@ -25,33 +27,51 @@ func (s *GroupService) List(page, perPage int) (*GroupListResponse, error) {
 		"per_page": strconv.Itoa(perPage),
 	}
 
+	// Try parsing as object first
+	var groupList GroupListResponse
+	if err := s.client.Request("GET", "/groups", nil, &groupList, func(r *resty.Request) {
+		r.SetQueryParams(params)
+	}); err == nil {
+		return &groupList, nil
+	}
+
+	// If parsing as object fails, try parsing as array
+	// Note: The new Request method returns error if unmarshal fails.
+	// We might need to handle this manually or adjust Request method to be more flexible,
+	// but for now let's stick to the previous pattern of checking both.
+	// However, since Request consumes the body, we can't easily re-read it unless we change Request.
+	// Actually, the previous implementation read body multiple times (resty buffers it).
+	// So we can try Request with one type, if it fails, try another?
+	// But Request does a lot of things.
+	
+	// Let's implement the specific logic here using client.Get for now to support this hybrid response,
+	// or refactor to use a unified type.
+	// The original code handled both object and array response.
+	// Let's use the lower level client.Get here because of the complex unmarshaling logic
+	// that depends on the response structure.
+	
 	resp, err := s.client.Get("/groups", params)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
+		return nil, fmt.Errorf("API error: %s", resp.Status())
 	}
-
-	// まずオブジェクト形式として解析を試みる
-	var groupList GroupListResponse
+	
+	// Try parsing as object first
 	if err := json.Unmarshal(resp.Body(), &groupList); err == nil {
 		return &groupList, nil
 	}
-
-	// オブジェクト形式での解析に失敗した場合、配列形式として解析を試みる
+	
+	// If parsing as object fails, try parsing as array
 	var groups []Group
 	if err := json.Unmarshal(resp.Body(), &groups); err != nil {
-		// デバッグ情報を含めたエラーメッセージを返す
+		// Return error message with debug info
 		return nil, fmt.Errorf("failed to parse response as object or array: %w, response body: %s", err, string(resp.Body()))
 	}
-
-	// 配列形式のレスポンスを GroupListResponse 形式に変換
+	
+	// Convert array response to GroupListResponse format
 	return &GroupListResponse{
 		Groups: groups,
 	}, nil
@@ -60,22 +80,9 @@ func (s *GroupService) List(page, perPage int) (*GroupListResponse, error) {
 // Get returns a group by ID
 func (s *GroupService) Get(id int) (*Group, error) {
 	path := fmt.Sprintf("/groups/%d", id)
-	resp, err := s.client.Get(path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
-	}
-
 	var groupResp GroupResponse
-	if err := json.Unmarshal(resp.Body(), &groupResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if err := s.client.Request("GET", path, nil, &groupResp); err != nil {
+		return nil, err
 	}
 
 	return &groupResp.Group, nil
@@ -85,22 +92,9 @@ func (s *GroupService) Get(id int) (*Group, error) {
 func (s *GroupService) GetMembers(id int) ([]User, error) {
 	// DocBase API returns users as part of the group detail response
 	path := fmt.Sprintf("/groups/%d", id)
-	resp, err := s.client.Get(path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("failed to parse error response: %w", err)
-		}
-		return nil, fmt.Errorf("API error: %s", errResp.Messages)
-	}
-
 	var group Group
-	if err := json.Unmarshal(resp.Body(), &group); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if err := s.client.Request("GET", path, nil, &group); err != nil {
+		return nil, err
 	}
 
 	return group.Users, nil
