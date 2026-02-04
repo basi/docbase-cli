@@ -303,10 +303,15 @@ Example:
 	}
 
 	// DeleteCmd represents the memo delete command
+	// Note: For safety, this command does not actually delete the memo.
+	// Instead, it prepends [DELETE] to the title.
 	DeleteCmd = &cobra.Command{
 		Use:   "delete [id]",
-		Short: "Delete a memo",
-		Long: `Delete a memo in DocBase.
+		Short: "Mark a memo for deletion (adds [DELETE] prefix to title)",
+		Long: `Mark a memo for deletion in DocBase.
+
+For safety, this command does not actually delete the memo.
+Instead, it prepends [DELETE] to the title.
 
 Example:
   docbase memo delete 12345`,
@@ -322,22 +327,60 @@ Example:
 				return fmt.Errorf("invalid memo ID: %s", args[0])
 			}
 
+			// First, get the current memo to check the title
+			memo, err := client.Memo.Get(id)
+			if err != nil {
+				return err
+			}
+
+			// Check if already marked for deletion
+			if strings.HasPrefix(memo.Title, "[DELETE]") {
+				fmt.Println(color.YellowString("Memo is already marked for deletion"))
+				return nil
+			}
+
 			force, _ := cmd.Flags().GetBool("force")
 			if !force {
-				fmt.Printf("Are you sure you want to delete memo %d? (y/N): ", id)
+				fmt.Printf("Are you sure you want to mark memo %d for deletion? (y/N): ", id)
 				var confirm string
 				fmt.Scanln(&confirm)
 				if strings.ToLower(confirm) != "y" {
-					fmt.Println("Deletion cancelled")
+					fmt.Println("Operation cancelled")
 					return nil
 				}
 			}
 
-			if err := client.Memo.Delete(id); err != nil {
+			// Update the title with [DELETE] prefix and add delete tag
+			newTitle := "[DELETE] " + memo.Title
+
+			// Extract existing tag names and add "delete" tag
+			var tags []string
+			for _, tag := range memo.Tags {
+				tags = append(tags, tag.Name)
+			}
+			// Add delete tag if not already present
+			hasDeleteTag := false
+			for _, tag := range tags {
+				if tag == "delete" {
+					hasDeleteTag = true
+					break
+				}
+			}
+			if !hasDeleteTag {
+				tags = append(tags, "delete")
+			}
+
+			req := &docbase.UpdateMemoRequest{
+				Title: newTitle,
+				Tags:  tags,
+			}
+
+			if _, err := client.Memo.Update(id, req); err != nil {
 				return err
 			}
 
-			fmt.Println(color.GreenString("Memo deleted successfully"))
+			fmt.Println(color.GreenString("Memo marked for deletion (title updated with [DELETE] prefix, 'delete' tag added)"))
+			fmt.Printf("URL: %s\n", memo.URL)
 			return nil
 		},
 	}
