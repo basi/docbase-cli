@@ -30,6 +30,7 @@ type Group struct {
 	Name        string    `json:"name"`
 	CreatedAt   time.Time `json:"created_at"`
 	Description string    `json:"description"`
+	Users       []User    `json:"users,omitempty"`
 }
 
 // Tag represents a DocBase tag
