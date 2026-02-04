@@ -21,6 +21,11 @@ DocBase CLI is a command-line interface for [DocBase](https://docbase.io/), a kn
 
 For a detailed list of changes and version history, please see the [CHANGELOG.md](CHANGELOG.md) file.
 
+## API Spec
+
+For details on the API specification, please refer to the following documentation:
+[DocBase API Spec](https://help.docbase.io/posts/45703)
+
 ## Installation
 
 ### Using Homebrew (macOS and Linux)
