@@ -218,10 +218,12 @@ Example:
 			body, _ := cmd.Flags().GetString("body")
 			bodyFile, _ := cmd.Flags().GetString("body-file")
 			draft, _ := cmd.Flags().GetBool("draft")
+			draftChanged := cmd.Flags().Changed("draft")
 			scope, _ := cmd.Flags().GetString("scope")
 			groupNames, _ := cmd.Flags().GetStringSlice("group")
 			tagNames, _ := cmd.Flags().GetStringSlice("tag")
 			notify, _ := cmd.Flags().GetBool("notify")
+			notifyChanged := cmd.Flags().Changed("notify")
 
 			if body == "" && bodyFile != "" {
 				var err error
@@ -237,14 +239,23 @@ Example:
 				return err
 			}
 
+			var draftPtr *bool
+			if draftChanged {
+				draftPtr = &draft
+			}
+			var notifyPtr *bool
+			if notifyChanged {
+				notifyPtr = &notify
+			}
+
 			req := &docbase.UpdateMemoRequest{
 				Title:  title,
 				Body:   body,
-				Draft:  draft,
+				Draft:  draftPtr,
 				Tags:   tagNames,
 				Scope:  scope,
 				Groups: groupIDs,
-				Notify: notify,
+				Notify: notifyPtr,
 			}
 
 			memo, err := client.Memo.Update(id, req)

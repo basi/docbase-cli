@@ -14,6 +14,7 @@ import (
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -74,7 +75,7 @@ func runExport(cmd *cobra.Command, query string) error {
 	}
 
 	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0700); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -154,9 +155,23 @@ func sanitizeFilename(s string) string {
 	return result
 }
 
+type memoFrontmatter struct {
+	ID        int      `yaml:"id"`
+	Title     string   `yaml:"title"`
+	Author    string   `yaml:"author"`
+	CreatedAt string   `yaml:"created_at"`
+	UpdatedAt string   `yaml:"updated_at"`
+	URL       string   `yaml:"url"`
+	Draft     bool     `yaml:"draft"`
+	Archived  bool     `yaml:"archived"`
+	Scope     string   `yaml:"scope"`
+	Tags      []string `yaml:"tags"`
+	Groups    []string `yaml:"groups"`
+}
+
 // writeMemoToFile writes a memo to a file in the specified format
 func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
-	file, err := os.Create(filepath)
+	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -164,34 +179,50 @@ func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
 
 	switch format {
 	case "md":
-		// Write frontmatter
-		fmt.Fprintf(file, "---\n")
-		fmt.Fprintf(file, "id: %d\n", memo.ID)
-		fmt.Fprintf(file, "title: \"%s\"\n", memo.Title)
-		fmt.Fprintf(file, "author: \"%s\"\n", memo.User.Name)
-		fmt.Fprintf(file, "created_at: %s\n", memo.CreatedAt.Format(time.RFC3339))
-		fmt.Fprintf(file, "updated_at: %s\n", memo.UpdatedAt.Format(time.RFC3339))
-		fmt.Fprintf(file, "url: %s\n", memo.URL)
-		fmt.Fprintf(file, "draft: %t\n", memo.Draft)
-		fmt.Fprintf(file, "archived: %t\n", memo.Archived)
-		fmt.Fprintf(file, "scope: %s\n", memo.Scope)
-
-		// Tags
-		fmt.Fprintf(file, "tags:\n")
+		tagNames := make([]string, 0, len(memo.Tags))
 		for _, tag := range memo.Tags {
-			fmt.Fprintf(file, "  - %s\n", tag.Name)
+			tagNames = append(tagNames, tag.Name)
 		}
 
-		// Groups
-		fmt.Fprintf(file, "groups:\n")
+		groupNames := make([]string, 0, len(memo.Groups))
 		for _, group := range memo.Groups {
-			fmt.Fprintf(file, "  - %s\n", group.Name)
+			groupNames = append(groupNames, group.Name)
 		}
 
-		fmt.Fprintf(file, "---\n\n")
+		frontmatter := memoFrontmatter{
+			ID:        memo.ID,
+			Title:     memo.Title,
+			Author:    memo.User.Name,
+			CreatedAt: memo.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: memo.UpdatedAt.Format(time.RFC3339),
+			URL:       memo.URL,
+			Draft:     memo.Draft,
+			Archived:  memo.Archived,
+			Scope:     memo.Scope,
+			Tags:      tagNames,
+			Groups:    groupNames,
+		}
 
-		// Write body
-		fmt.Fprintf(file, "%s\n", memo.Body)
+		frontmatterBytes, err := yaml.Marshal(frontmatter)
+		if err != nil {
+			return fmt.Errorf("failed to marshal frontmatter: %w", err)
+		}
+
+		if _, err := fmt.Fprintln(file, "---"); err != nil {
+			return err
+		}
+		if _, err := file.Write(frontmatterBytes); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(file, "---"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(file); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(file, memo.Body); err != nil {
+			return err
+		}
 
 	case "json":
 		// Use json.Marshal to convert memo to JSON
@@ -199,7 +230,10 @@ func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(file, "%s\n", string(bytes))
+		bytes = append(bytes, '\n')
+		if _, err := file.Write(bytes); err != nil {
+			return err
+		}
 
 	default:
 		return fmt.Errorf("unsupported format: %s", format)

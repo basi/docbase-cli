@@ -45,6 +45,22 @@ func NewClient(teamDomain, accessToken string) *Client {
 // RequestOption allows setting custom options for requests
 type RequestOption func(*resty.Request)
 
+func (c *Client) errorFromResponse(resp *resty.Response) error {
+	var errResp ErrorResponse
+	if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
+		return fmt.Errorf("failed to parse error response: %w, status: %s", err, resp.Status())
+	}
+
+	// Improve error message
+	errMsg := resp.Status()
+	if len(errResp.Messages) > 0 {
+		errMsg = fmt.Sprintf("%v", errResp.Messages)
+	} else if errResp.Error != "" {
+		errMsg = errResp.Error
+	}
+	return fmt.Errorf("API error: %s", errMsg)
+}
+
 // Request performs the API request and handles standard error checking and unmarshaling
 func (c *Client) Request(method, path string, body interface{}, result interface{}, opts ...RequestOption) error {
 	url := c.buildURL(path, nil)
@@ -79,18 +95,7 @@ func (c *Client) Request(method, path string, body interface{}, result interface
 	}
 
 	if resp.IsError() {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return fmt.Errorf("failed to parse error response: %w, status: %s", err, resp.Status())
-		}
-		// Improve error message
-		errMsg := resp.Status()
-		if len(errResp.Messages) > 0 {
-			errMsg = fmt.Sprintf("%v", errResp.Messages)
-		} else if errResp.Error != "" {
-			errMsg = errResp.Error
-		}
-		return fmt.Errorf("API error: %s", errMsg)
+		return c.errorFromResponse(resp)
 	}
 
 	if result != nil {
@@ -115,7 +120,7 @@ func (c *Client) SetTimeout(timeout time.Duration) {
 // buildURL builds the URL for the API request
 func (c *Client) buildURL(path string, params map[string]string) string {
 	baseURL := fmt.Sprintf("%s/teams/%s%s", c.BaseURL, c.TeamDomain, path)
-	
+
 	if len(params) == 0 {
 		return baseURL
 	}

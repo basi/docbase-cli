@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/basi/docbase-cli/internal/config"
@@ -99,16 +100,11 @@ func FormatGroups(groups []docbase.Group) string {
 	return strings.Join(groupNames, ", ")
 }
 
-// ResolveGroupIDs resolves group names to group IDs
-func ResolveGroupIDs(client *docbase.API, groupNames []string) ([]int, error) {
-	if len(groupNames) == 0 {
-		return nil, nil
-	}
-
-	// Build a map of all groups (handle pagination)
+// BuildGroupNameToIDMap retrieves all groups and returns a map of group name -> group ID.
+func BuildGroupNameToIDMap(client *docbase.API) (map[string]int, error) {
 	groupMap := make(map[string]int)
 	page := 1
-	perPage := 100
+	perPage := 200
 
 	for {
 		groups, err := client.Group.List(page, perPage)
@@ -120,27 +116,50 @@ func ResolveGroupIDs(client *docbase.API, groupNames []string) ([]int, error) {
 			groupMap[group.Name] = group.ID
 		}
 
-		if len(groups.Groups) < perPage || groups.Meta.NextPage == nil {
+		if len(groups.Groups) < perPage {
 			break
 		}
 		page++
 	}
 
-	// Resolve names to IDs
-	var groupIDs []int
+	return groupMap, nil
+}
+
+// ResolveGroupIDsFromMap resolves group names to IDs using a pre-built map.
+func ResolveGroupIDsFromMap(groupMap map[string]int, groupNames []string) ([]int, error) {
+	if len(groupNames) == 0 {
+		return nil, nil
+	}
+
+	groupIDs := make([]int, 0, len(groupNames))
 	for _, name := range groupNames {
 		id, ok := groupMap[name]
 		if !ok {
-			var availableGroups []string
+			availableGroups := make([]string, 0, len(groupMap))
 			for groupName := range groupMap {
 				availableGroups = append(availableGroups, groupName)
 			}
+			sort.Strings(availableGroups)
 			return nil, fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
 		}
 		groupIDs = append(groupIDs, id)
 	}
 
 	return groupIDs, nil
+}
+
+// ResolveGroupIDs resolves group names to group IDs
+func ResolveGroupIDs(client *docbase.API, groupNames []string) ([]int, error) {
+	if len(groupNames) == 0 {
+		return nil, nil
+	}
+
+	groupMap, err := BuildGroupNameToIDMap(client)
+	if err != nil {
+		return nil, err
+	}
+
+	return ResolveGroupIDsFromMap(groupMap, groupNames)
 }
 
 // TruncateString truncates a string to the specified length (rune-aware for multibyte characters)

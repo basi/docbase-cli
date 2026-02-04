@@ -160,6 +160,9 @@ docbase export tag "週報" --output ./exports
 # Import a memo from a file
 docbase import file ./memo.md --group "全員"
 
+# Overwrite tags/groups from file (default is to merge)
+docbase import file ./memo.md --group "全員" --overwrite
+
 # Import memos from a directory
 docbase import dir ./exports --group "全員"
 ```

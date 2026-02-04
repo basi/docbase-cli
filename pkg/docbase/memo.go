@@ -1,6 +1,7 @@
 package docbase
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -44,25 +45,27 @@ func (s *MemoService) List(page, perPage int, query string) (*MemoListResponse, 
 func (s *MemoService) Get(id int) (*Memo, error) {
 	path := fmt.Sprintf("/posts/%d", id)
 
-	// Try parsing as wrapped response first
-	var memoResp MemoResponse
-	if err := s.client.Request("GET", path, nil, &memoResp); err != nil {
+	resp, err := s.client.Get(path, nil)
+	if err != nil {
 		return nil, err
 	}
 
-	// If wrapped response worked, return it
-	if memoResp.Memo.ID != 0 {
+	if resp.IsError() {
+		return nil, s.client.errorFromResponse(resp)
+	}
+
+	body := resp.Body()
+
+	// Try parsing as wrapped response first
+	var memoResp MemoResponse
+	if err := json.Unmarshal(body, &memoResp); err == nil && memoResp.Memo.ID != 0 {
 		return &memoResp.Memo, nil
 	}
 
 	// Fallback: try parsing as raw Memo (some API versions may return unwrapped)
 	var memo Memo
-	if err := s.client.Request("GET", path, nil, &memo); err != nil {
-		return nil, err
-	}
-
-	if memo.ID == 0 {
-		return nil, fmt.Errorf("memo not found: %d", id)
+	if err := json.Unmarshal(body, &memo); err != nil || memo.ID == 0 {
+		return nil, fmt.Errorf("failed to parse memo response: %d", id)
 	}
 
 	return &memo, nil
@@ -70,23 +73,55 @@ func (s *MemoService) Get(id int) (*Memo, error) {
 
 // Create creates a new memo
 func (s *MemoService) Create(req *CreateMemoRequest) (*Memo, error) {
-	var memoResp MemoResponse
-	if err := s.client.Request("POST", "/posts", req, &memoResp); err != nil {
+	resp, err := s.client.Post("/posts", req)
+	if err != nil {
 		return nil, err
 	}
 
-	return &memoResp.Memo, nil
+	if resp.IsError() {
+		return nil, s.client.errorFromResponse(resp)
+	}
+
+	body := resp.Body()
+
+	var memoResp MemoResponse
+	if err := json.Unmarshal(body, &memoResp); err == nil && memoResp.Memo.ID != 0 {
+		return &memoResp.Memo, nil
+	}
+
+	var memo Memo
+	if err := json.Unmarshal(body, &memo); err == nil && memo.ID != 0 {
+		return &memo, nil
+	}
+
+	return nil, fmt.Errorf("failed to parse create memo response")
 }
 
 // Update updates a memo
 func (s *MemoService) Update(id int, req *UpdateMemoRequest) (*Memo, error) {
-	var memoResp MemoResponse
 	path := fmt.Sprintf("/posts/%d", id)
-	if err := s.client.Request("PUT", path, req, &memoResp); err != nil {
+	resp, err := s.client.Put(path, req)
+	if err != nil {
 		return nil, err
 	}
 
-	return &memoResp.Memo, nil
+	if resp.IsError() {
+		return nil, s.client.errorFromResponse(resp)
+	}
+
+	body := resp.Body()
+
+	var memoResp MemoResponse
+	if err := json.Unmarshal(body, &memoResp); err == nil && memoResp.Memo.ID != 0 {
+		return &memoResp.Memo, nil
+	}
+
+	var memo Memo
+	if err := json.Unmarshal(body, &memo); err == nil && memo.ID != 0 {
+		return &memo, nil
+	}
+
+	return nil, fmt.Errorf("failed to parse update memo response: %d", id)
 }
 
 // Delete deletes a memo

@@ -12,7 +12,7 @@ import (
 	_ "github.com/basi/docbase-cli/cmd/config"
 	_ "github.com/basi/docbase-cli/cmd/export"
 	_ "github.com/basi/docbase-cli/cmd/group"
-	// _ "github.com/basi/docbase-cli/cmd/import" // Temporarily disabled due to compilation issues
+	_ "github.com/basi/docbase-cli/cmd/import"
 	_ "github.com/basi/docbase-cli/cmd/memo"
 	"github.com/basi/docbase-cli/cmd/root"
 	_ "github.com/basi/docbase-cli/cmd/tag"
