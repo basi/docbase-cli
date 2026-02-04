@@ -83,7 +83,8 @@ func (s *GroupService) Get(id int) (*Group, error) {
 
 // GetMembers returns the members of a group
 func (s *GroupService) GetMembers(id int) ([]User, error) {
-	path := fmt.Sprintf("/groups/%d/users", id)
+	// DocBase API returns users as part of the group detail response
+	path := fmt.Sprintf("/groups/%d", id)
 	resp, err := s.client.Get(path, nil)
 	if err != nil {
 		return nil, err
@@ -97,12 +98,10 @@ func (s *GroupService) GetMembers(id int) ([]User, error) {
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
-	var users struct {
-		Users []User `json:"users"`
-	}
-	if err := json.Unmarshal(resp.Body(), &users); err != nil {
+	var group Group
+	if err := json.Unmarshal(resp.Body(), &group); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return users.Users, nil
+	return group.Users, nil
 }
