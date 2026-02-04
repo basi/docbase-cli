@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ Example:
   docbase api get /posts?q=tag:weekly`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -55,7 +55,7 @@ Example:
 				}
 			}
 
-			resp, err := client.Get(path, params)
+			resp, err := c.Get(path, params)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ Example:
   docbase api post /posts --data '{"title":"Test","body":"Test body","draft":false,"tags":["test"],"scope":"group","groups":[1],"notice":false}'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -103,7 +103,7 @@ Example:
 				return fmt.Errorf("invalid JSON data: %w", err)
 			}
 
-			resp, err := client.Post(path, jsonData)
+			resp, err := c.Post(path, jsonData)
 			if err != nil {
 				return err
 			}
@@ -134,7 +134,7 @@ Example:
   docbase api put /posts/12345 --data '{"title":"Updated Title","body":"Updated body"}'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -151,7 +151,7 @@ Example:
 				return fmt.Errorf("invalid JSON data: %w", err)
 			}
 
-			resp, err := client.Put(path, jsonData)
+			resp, err := c.Put(path, jsonData)
 			if err != nil {
 				return err
 			}
@@ -182,13 +182,13 @@ Example:
   docbase api delete /posts/12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
 
 			path := args[0]
-			resp, err := client.Delete(path)
+			resp, err := c.Delete(path)
 			if err != nil {
 				return err
 			}

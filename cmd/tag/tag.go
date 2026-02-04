@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ Example:
   docbase tag list
   docbase tag list --page 2 --per-page 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -38,7 +38,7 @@ Example:
 			page, _ := cmd.Flags().GetInt("page")
 			perPage, _ := cmd.Flags().GetInt("per-page")
 
-			tagList, err := client.Tag.List(page, perPage)
+			tagList, err := c.Tag.List(page, perPage)
 			if err != nil {
 				return err
 			}
@@ -53,8 +53,8 @@ Example:
 				fmt.Println("Tag Name")
 				fmt.Println(strings.Repeat("-", 80))
 
-				for _, tag := range tagList.Tags {
-					fmt.Println(tag.Name)
+				for _, t := range tagList.Tags {
+					fmt.Println(t.Name)
 				}
 
 				if tagList.Meta.NextPage != nil {
@@ -78,7 +78,7 @@ Example:
   docbase tag search "weekly"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,7 @@ Example:
 			page, _ := cmd.Flags().GetInt("page")
 			perPage, _ := cmd.Flags().GetInt("per-page")
 
-			tagList, err := client.Tag.Search(query, page, perPage)
+			tagList, err := c.Tag.Search(query, page, perPage)
 			if err != nil {
 				return err
 			}
@@ -103,8 +103,8 @@ Example:
 				fmt.Println("Tag Name")
 				fmt.Println(strings.Repeat("-", 80))
 
-				for _, tag := range tagList.Tags {
-					fmt.Println(tag.Name)
+				for _, t := range tagList.Tags {
+					fmt.Println(t.Name)
 				}
 
 				if tagList.Meta.NextPage != nil {
