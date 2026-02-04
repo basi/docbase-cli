@@ -67,8 +67,7 @@ func (s *GroupService) List(page, perPage int) (*GroupListResponse, error) {
 	// If parsing as object fails, try parsing as array
 	var groups []Group
 	if err := json.Unmarshal(resp.Body(), &groups); err != nil {
-		// Return error message with debug info
-		return nil, fmt.Errorf("failed to parse response as object or array: %w, response body: %s", err, string(resp.Body()))
+		return nil, fmt.Errorf("failed to parse response as object or array: %w", err)
 	}
 	
 	// Convert array response to GroupListResponse format

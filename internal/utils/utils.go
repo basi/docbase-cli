@@ -99,10 +99,62 @@ func FormatGroups(groups []docbase.Group) string {
 	return strings.Join(groupNames, ", ")
 }
 
-// TruncateString truncates a string to the specified length
+// ResolveGroupIDs resolves group names to group IDs
+func ResolveGroupIDs(client *docbase.API, groupNames []string) ([]int, error) {
+	if len(groupNames) == 0 {
+		return nil, nil
+	}
+
+	// Build a map of all groups (handle pagination)
+	groupMap := make(map[string]int)
+	page := 1
+	perPage := 100
+
+	for {
+		groups, err := client.Group.List(page, perPage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve group list: %w", err)
+		}
+
+		for _, group := range groups.Groups {
+			groupMap[group.Name] = group.ID
+		}
+
+		if len(groups.Groups) < perPage || groups.Meta.NextPage == nil {
+			break
+		}
+		page++
+	}
+
+	// Resolve names to IDs
+	var groupIDs []int
+	for _, name := range groupNames {
+		id, ok := groupMap[name]
+		if !ok {
+			var availableGroups []string
+			for groupName := range groupMap {
+				availableGroups = append(availableGroups, groupName)
+			}
+			return nil, fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
+		}
+		groupIDs = append(groupIDs, id)
+	}
+
+	return groupIDs, nil
+}
+
+// TruncateString truncates a string to the specified length (rune-aware for multibyte characters)
 func TruncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	if maxLen <= 0 {
+		return ""
+	}
+	if maxLen <= 3 {
+		return s[:min(len(s), maxLen)]
+	}
+
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
 }

@@ -59,10 +59,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Enable verbose output")
 
 	// Bind flags to viper
-	viper.BindPFlag("team_domain", rootCmd.PersistentFlags().Lookup("team"))
-	viper.BindPFlag("access_token", rootCmd.PersistentFlags().Lookup("token"))
-	viper.BindPFlag("output_format", rootCmd.PersistentFlags().Lookup("format"))
-	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	_ = viper.BindPFlag("team_domain", rootCmd.PersistentFlags().Lookup("team"))
+	_ = viper.BindPFlag("access_token", rootCmd.PersistentFlags().Lookup("token"))
+	_ = viper.BindPFlag("output_format", rootCmd.PersistentFlags().Lookup("format"))
+	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -165,30 +165,9 @@ Example:
 			}
 
 			// Get group IDs
-			var groupIDs []int
-			if len(groupNames) > 0 {
-				groups, err := client.Group.List(1, 100)
-				if err != nil {
-					return fmt.Errorf("failed to retrieve group list: %w", err)
-				}
-
-				groupMap := make(map[string]int)
-				for _, group := range groups.Groups {
-					groupMap[group.Name] = group.ID
-				}
-
-				for _, name := range groupNames {
-					id, ok := groupMap[name]
-					if !ok {
-						// Provide a more helpful error message with available groups
-						var availableGroups []string
-						for groupName := range groupMap {
-							availableGroups = append(availableGroups, groupName)
-						}
-						return fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
-					}
-					groupIDs = append(groupIDs, id)
-				}
+			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			if err != nil {
+				return err
 			}
 
 			req := &docbase.CreateMemoRequest{
@@ -253,30 +232,9 @@ Example:
 			}
 
 			// Get group IDs
-			var groupIDs []int
-			if len(groupNames) > 0 {
-				groups, err := client.Group.List(1, 100)
-				if err != nil {
-					return fmt.Errorf("failed to retrieve group list: %w", err)
-				}
-
-				groupMap := make(map[string]int)
-				for _, group := range groups.Groups {
-					groupMap[group.Name] = group.ID
-				}
-
-				for _, name := range groupNames {
-					id, ok := groupMap[name]
-					if !ok {
-						// Provide a more helpful error message with available groups
-						var availableGroups []string
-						for groupName := range groupMap {
-							availableGroups = append(availableGroups, groupName)
-						}
-						return fmt.Errorf("group not found: %s\nAvailable groups: %s", name, strings.Join(availableGroups, ", "))
-					}
-					groupIDs = append(groupIDs, id)
-				}
+			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			if err != nil {
+				return err
 			}
 
 			req := &docbase.UpdateMemoRequest{
