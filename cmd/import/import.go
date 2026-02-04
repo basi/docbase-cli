@@ -3,7 +3,7 @@ package import_cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -49,7 +49,7 @@ Example:
 			notify, _ := cmd.Flags().GetBool("notify")
 
 			// Read file
-			content, err := ioutil.ReadFile(filePath)
+			content, err := os.ReadFile(filePath)
 			if err != nil {
 				return fmt.Errorf("failed to read file: %w", err)
 			}
@@ -74,25 +74,9 @@ Example:
 			}
 
 			// Get group IDs
-			var groupIDs []int
-			if len(groupNames) > 0 {
-				groups, err := client.Group.List(1, 100)
-				if err != nil {
-					return err
-				}
-
-				groupMap := make(map[string]int)
-				for _, group := range groups.Groups {
-					groupMap[group.Name] = group.ID
-				}
-
-				for _, name := range groupNames {
-					id, ok := groupMap[name]
-					if !ok {
-						return fmt.Errorf("group not found: %s", name)
-					}
-					groupIDs = append(groupIDs, id)
-				}
+			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			if err != nil {
+				return err
 			}
 
 			// Create memo
@@ -144,29 +128,13 @@ Example:
 			limit, _ := cmd.Flags().GetInt("limit")
 
 			// Get group IDs
-			var groupIDs []int
-			if len(groupNames) > 0 {
-				groups, err := client.Group.List(1, 100)
-				if err != nil {
-					return err
-				}
-
-				groupMap := make(map[string]int)
-				for _, group := range groups.Groups {
-					groupMap[group.Name] = group.ID
-				}
-
-				for _, name := range groupNames {
-					id, ok := groupMap[name]
-					if !ok {
-						return fmt.Errorf("group not found: %s", name)
-					}
-					groupIDs = append(groupIDs, id)
-				}
+			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			if err != nil {
+				return err
 			}
 
 			// List files in directory
-			files, err := ioutil.ReadDir(dirPath)
+			files, err := os.ReadDir(dirPath)
 			if err != nil {
 				return fmt.Errorf("failed to read directory: %w", err)
 			}
@@ -197,7 +165,7 @@ Example:
 				fmt.Printf("Importing %s...\n", filePath)
 
 				// Read file
-				content, err := ioutil.ReadFile(filePath)
+				content, err := os.ReadFile(filePath)
 				if err != nil {
 					fmt.Printf("Error reading file %s: %v, skipping\n", filePath, err)
 					continue

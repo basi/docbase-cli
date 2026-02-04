@@ -42,26 +42,30 @@ func (s *MemoService) List(page, perPage int, query string) (*MemoListResponse, 
 
 // Get returns a memo by ID
 func (s *MemoService) Get(id int) (*Memo, error) {
-	var memoResp MemoResponse
 	path := fmt.Sprintf("/posts/%d", id)
+
+	// Try parsing as wrapped response first
+	var memoResp MemoResponse
 	if err := s.client.Request("GET", path, nil, &memoResp); err != nil {
 		return nil, err
 	}
 
-	// If Memo is empty (ID is 0), it might have been unmarshaled directly to Memo
-	// Note: The previous logic handled a fallback. The new Request method unmarshals strictly to the target.
-	// If the API returns a Memo directly instead of MemoResponse wrapper, we might need a distinct handling.
-	// However, generally DocBase APIs are wrapped. Let's assume consistent wrapping for now or inspect.
-	// The original code tried MemoResponse first, then Memo.
-	// If we want to support that fallback, Request method needs to be smarter or we do it here.
-	// But let's stick to the main path first.
-	if memoResp.Memo.ID == 0 {
-		// Fallback check: maybe it was a raw Memo?
-		// We can't easily re-read the body in the helper.
-		// For now, let's assume the wrapper usage is correct as per existing successful code path.
+	// If wrapped response worked, return it
+	if memoResp.Memo.ID != 0 {
+		return &memoResp.Memo, nil
 	}
 
-	return &memoResp.Memo, nil
+	// Fallback: try parsing as raw Memo (some API versions may return unwrapped)
+	var memo Memo
+	if err := s.client.Request("GET", path, nil, &memo); err != nil {
+		return nil, err
+	}
+
+	if memo.ID == 0 {
+		return nil, fmt.Errorf("memo not found: %d", id)
+	}
+
+	return &memo, nil
 }
 
 // Create creates a new memo
