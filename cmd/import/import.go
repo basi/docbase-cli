@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/client"
+	"github.com/basi/docbase-cli/internal/groups"
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ Example:
   docbase import file ./memo.json --group "全員" --tag "週報"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -60,29 +61,29 @@ Example:
 
 			var groupMap map[string]int
 			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = groups.BuildNameToIDMap(c)
 				if err != nil {
 					return err
 				}
-				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				opts.fixedGroupIDs, err = groups.ResolveIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
 				if err != nil {
 					return err
 				}
 			}
 
-			req, _, err := buildCreateMemoRequest(client, opts, data, groupMap)
+			req, _, err := buildCreateMemoRequest(c, opts, data, groupMap)
 			if err != nil {
 				return err
 			}
 
 			// Create memo
-			memo, err := client.Memo.Create(req)
+			memo, err := c.Memo.Create(req)
 			if err != nil {
 				return err
 			}
 
 			if data.Archived != nil && *data.Archived {
-				if err := client.Memo.Archive(memo.ID); err != nil {
+				if err := c.Memo.Archive(memo.ID); err != nil {
 					return err
 				}
 			}
@@ -106,7 +107,7 @@ Example:
   docbase import dir ./exports --group "全員" --tag "週報"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -141,11 +142,11 @@ Example:
 
 			var groupMap map[string]int
 			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = groups.BuildNameToIDMap(c)
 				if err != nil {
 					return err
 				}
-				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				opts.fixedGroupIDs, err = groups.ResolveIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
 				if err != nil {
 					return err
 				}
@@ -175,20 +176,20 @@ Example:
 				}
 
 				var req *docbase.CreateMemoRequest
-				req, groupMap, err = buildCreateMemoRequest(client, opts, data, groupMap)
+				req, groupMap, err = buildCreateMemoRequest(c, opts, data, groupMap)
 				if err != nil {
 					fmt.Printf("Error building request for file %s: %v, skipping\n", filePath, err)
 					continue
 				}
 
-				memo, err := client.Memo.Create(req)
+				memo, err := c.Memo.Create(req)
 				if err != nil {
 					fmt.Printf("Error creating memo from file %s: %v, skipping\n", filePath, err)
 					continue
 				}
 
 				if data.Archived != nil && *data.Archived {
-					if err := client.Memo.Archive(memo.ID); err != nil {
+					if err := c.Memo.Archive(memo.ID); err != nil {
 						fmt.Printf("Error archiving memo from file %s: %v, skipping\n", filePath, err)
 						continue
 					}
@@ -270,7 +271,7 @@ type markdownFrontmatter struct {
 	Groups   []string `yaml:"groups"`
 }
 
-func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *importMemoData, groupMap map[string]int) (*docbase.CreateMemoRequest, map[string]int, error) {
+func buildCreateMemoRequest(c *docbase.API, opts *importOptions, data *importMemoData, groupMap map[string]int) (*docbase.CreateMemoRequest, map[string]int, error) {
 	title := strings.TrimSpace(data.Title)
 	if title == "" {
 		title = "Imported Memo"
@@ -293,7 +294,7 @@ func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *impo
 		if len(groupNames) > 0 {
 			if groupMap == nil {
 				var err error
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = groups.BuildNameToIDMap(c)
 				if err != nil {
 					if len(data.GroupIDs) > 0 {
 						fileGroupIDs = data.GroupIDs
@@ -305,7 +306,7 @@ func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *impo
 
 			if fileGroupIDs == nil {
 				var err error
-				fileGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, groupNames)
+				fileGroupIDs, err = groups.ResolveIDsFromMap(groupMap, groupNames)
 				if err != nil {
 					if len(data.GroupIDs) > 0 {
 						fileGroupIDs = data.GroupIDs
@@ -544,10 +545,10 @@ func memoToImportMemoData(memo *docbase.Memo) *importMemoData {
 		tags = append(tags, tag.Name)
 	}
 
-	groups := make([]string, 0, len(memo.Groups))
+	grps := make([]string, 0, len(memo.Groups))
 	groupIDs := make([]int, 0, len(memo.Groups))
 	for _, group := range memo.Groups {
-		groups = append(groups, group.Name)
+		grps = append(grps, group.Name)
 		groupIDs = append(groupIDs, group.ID)
 	}
 
@@ -561,7 +562,7 @@ func memoToImportMemoData(memo *docbase.Memo) *importMemoData {
 		Archived: &archived,
 		Scope:    memo.Scope,
 		Tags:     tags,
-		Groups:   groups,
+		Groups:   grps,
 		GroupIDs: groupIDs,
 	}
 }
