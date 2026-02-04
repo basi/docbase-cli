@@ -63,17 +63,17 @@ func (s *CommentService) Create(memoID int, req *CreateCommentRequest) (*Comment
 		return nil, fmt.Errorf("API error: %s", errResp.Messages)
 	}
 
-	var commentResp CommentResponse
-	if err := json.Unmarshal(resp.Body(), &commentResp); err != nil {
+	var comment Comment
+	if err := json.Unmarshal(resp.Body(), &comment); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return &commentResp.Comment, nil
+	return &comment, nil
 }
 
 // Delete deletes a comment
-func (s *CommentService) Delete(memoID, commentID int) error {
-	path := fmt.Sprintf("/posts/%d/comments/%d", memoID, commentID)
+func (s *CommentService) Delete(commentID int) error {
+	path := fmt.Sprintf("/comments/%d", commentID)
 	resp, err := s.client.Delete(path)
 	if err != nil {
 		return err
