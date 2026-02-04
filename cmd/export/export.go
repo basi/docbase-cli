@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -60,7 +60,7 @@ Example:
 
 // runExport is the common export logic for both group and tag commands
 func runExport(cmd *cobra.Command, query string) error {
-	client, err := utils.CreateClient(cmd)
+	client, err := cmdutil.CreateClient(cmd)
 	if err != nil {
 		return err
 	}

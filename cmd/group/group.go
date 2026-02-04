@@ -8,7 +8,7 @@ import (
 
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ Example:
   docbase group list
   docbase group list --page 2 --per-page 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -56,7 +56,7 @@ Example:
 				for _, group := range groupList.Groups {
 					fmt.Printf("%-8d %s\n",
 						group.ID,
-						utils.TruncateString(group.Name, 37),
+						cmdutil.TruncateString(group.Name, 37),
 					)
 				}
 
@@ -80,7 +80,7 @@ Example:
   docbase group view 123`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -128,7 +128,7 @@ Example:
   docbase group members 123`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -157,9 +157,9 @@ Example:
 				for _, member := range members {
 					fmt.Printf("%-8d %-30s %-8t %s\n",
 						member.ID,
-						utils.TruncateString(member.Name, 27),
+						cmdutil.TruncateString(member.Name, 27),
 						member.Admin,
-						utils.TruncateString(member.ProfileImageURL, 40),
+						cmdutil.TruncateString(member.ProfileImageURL, 40),
 					)
 				}
 				return nil

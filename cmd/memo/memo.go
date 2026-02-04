@@ -8,7 +8,7 @@ import (
 
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ Example:
   docbase memo list --page 2 --per-page 20
   docbase memo list --query "tag:週報"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -60,9 +60,9 @@ Example:
 				for _, memo := range memoList.Memos {
 					fmt.Printf("%-8d %-40s %-20s %s\n",
 						memo.ID,
-						utils.TruncateString(memo.Title, 37),
-						utils.TruncateString(memo.User.Name, 17),
-						utils.TruncateString(utils.FormatTags(memo.Tags), 20),
+						cmdutil.TruncateString(memo.Title, 37),
+						cmdutil.TruncateString(memo.User.Name, 17),
+						cmdutil.TruncateString(cmdutil.FormatTags(memo.Tags), 20),
 					)
 				}
 
@@ -87,7 +87,7 @@ Example:
   docbase memo view 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -112,8 +112,8 @@ Example:
 				fmt.Printf("Author: %s\n", memo.User.Name)
 				fmt.Printf("Created: %s\n", memo.CreatedAt.Format("2006-01-02 15:04:05"))
 				fmt.Printf("Updated: %s\n", memo.UpdatedAt.Format("2006-01-02 15:04:05"))
-				fmt.Printf("Tags: %s\n", utils.FormatTags(memo.Tags))
-				fmt.Printf("Groups: %s\n", utils.FormatGroups(memo.Groups))
+				fmt.Printf("Tags: %s\n", cmdutil.FormatTags(memo.Tags))
+				fmt.Printf("Groups: %s\n", cmdutil.FormatGroups(memo.Groups))
 				fmt.Printf("URL: %s\n", memo.URL)
 				fmt.Println(strings.Repeat("-", 80))
 				fmt.Println(memo.Body)
@@ -134,7 +134,7 @@ Example:
   docbase memo create --title "Test Memo" --body "This is a test memo" --group "全員"
   docbase memo create --title "Test Memo" --body-file memo.md --tag "週報" --tag "開発"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -158,14 +158,14 @@ Example:
 
 			if body == "" && bodyFile != "" {
 				var err error
-				body, err = utils.ReadFile(bodyFile)
+				body, err = cmdutil.ReadFile(bodyFile)
 				if err != nil {
 					return err
 				}
 			}
 
 			// Get group IDs
-			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			groupIDs, err := cmdutil.ResolveGroupIDs(client, groupNames)
 			if err != nil {
 				return err
 			}
@@ -204,7 +204,7 @@ Example:
   docbase memo edit 12345 --body-file updated.md --tag "週報" --tag "開発"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -227,14 +227,14 @@ Example:
 
 			if body == "" && bodyFile != "" {
 				var err error
-				body, err = utils.ReadFile(bodyFile)
+				body, err = cmdutil.ReadFile(bodyFile)
 				if err != nil {
 					return err
 				}
 			}
 
 			// Get group IDs
-			groupIDs, err := utils.ResolveGroupIDs(client, groupNames)
+			groupIDs, err := cmdutil.ResolveGroupIDs(client, groupNames)
 			if err != nil {
 				return err
 			}
@@ -286,7 +286,7 @@ Example:
   docbase memo delete 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -364,7 +364,7 @@ Example:
   docbase memo archive 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -393,7 +393,7 @@ Example:
   docbase memo unarchive 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -424,7 +424,7 @@ Example:
   docbase memo search "group:全員 created_at:2023-01-01~2023-12-31"`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -486,9 +486,9 @@ Example:
 				for _, memo := range memoList.Memos {
 					fmt.Printf("%-8d %-40s %-20s %s\n",
 						memo.ID,
-						utils.TruncateString(memo.Title, 37),
-						utils.TruncateString(memo.User.Name, 17),
-						utils.TruncateString(utils.FormatTags(memo.Tags), 20),
+						cmdutil.TruncateString(memo.Title, 37),
+						cmdutil.TruncateString(memo.User.Name, 17),
+						cmdutil.TruncateString(cmdutil.FormatTags(memo.Tags), 20),
 					)
 				}
 

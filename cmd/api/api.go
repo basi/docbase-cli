@@ -8,7 +8,7 @@ import (
 
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ Example:
   docbase api get /posts?q=tag:weekly`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ Example:
   docbase api post /posts --data '{"title":"Test","body":"Test body","draft":false,"tags":["test"],"scope":"group","groups":[1],"notice":false}'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -134,7 +134,7 @@ Example:
   docbase api put /posts/12345 --data '{"title":"Updated Title","body":"Updated body"}'`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -182,7 +182,7 @@ Example:
   docbase api delete /posts/12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}

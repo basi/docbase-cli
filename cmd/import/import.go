@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -36,7 +36,7 @@ Example:
   docbase import file ./memo.json --group "全員" --tag "週報"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -60,11 +60,11 @@ Example:
 
 			var groupMap map[string]int
 			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = cmdutil.BuildGroupNameToIDMap(client)
 				if err != nil {
 					return err
 				}
-				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				opts.fixedGroupIDs, err = cmdutil.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
 				if err != nil {
 					return err
 				}
@@ -106,7 +106,7 @@ Example:
   docbase import dir ./exports --group "全員" --tag "週報"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -141,11 +141,11 @@ Example:
 
 			var groupMap map[string]int
 			if opts.groupNamesChanged && len(opts.groupNames) > 0 {
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = cmdutil.BuildGroupNameToIDMap(client)
 				if err != nil {
 					return err
 				}
-				opts.fixedGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
+				opts.fixedGroupIDs, err = cmdutil.ResolveGroupIDsFromMap(groupMap, dedupeStrings(normalizeStringSlice(opts.groupNames)))
 				if err != nil {
 					return err
 				}
@@ -293,7 +293,7 @@ func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *impo
 		if len(groupNames) > 0 {
 			if groupMap == nil {
 				var err error
-				groupMap, err = utils.BuildGroupNameToIDMap(client)
+				groupMap, err = cmdutil.BuildGroupNameToIDMap(client)
 				if err != nil {
 					if len(data.GroupIDs) > 0 {
 						fileGroupIDs = data.GroupIDs
@@ -305,7 +305,7 @@ func buildCreateMemoRequest(client *docbase.API, opts *importOptions, data *impo
 
 			if fileGroupIDs == nil {
 				var err error
-				fileGroupIDs, err = utils.ResolveGroupIDsFromMap(groupMap, groupNames)
+				fileGroupIDs, err = cmdutil.ResolveGroupIDsFromMap(groupMap, groupNames)
 				if err != nil {
 					if len(data.GroupIDs) > 0 {
 						fileGroupIDs = data.GroupIDs

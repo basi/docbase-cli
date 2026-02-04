@@ -8,7 +8,7 @@ import (
 
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ Example:
   docbase tag list
   docbase tag list --page 2 --per-page 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -78,7 +78,7 @@ Example:
   docbase tag search "weekly"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}

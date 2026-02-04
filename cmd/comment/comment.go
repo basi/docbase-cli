@@ -8,7 +8,7 @@ import (
 
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
+	"github.com/basi/docbase-cli/internal/cmdutil"
 	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ Example:
   docbase comment list 12345 --page 2 --per-page 20`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ Example:
   docbase comment create 12345 --body-file comment.md`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ Example:
 
 			if body == "" && bodyFile != "" {
 				var err error
-				body, err = utils.ReadFile(bodyFile)
+				body, err = cmdutil.ReadFile(bodyFile)
 				if err != nil {
 					return err
 				}
@@ -143,7 +143,7 @@ Example:
   docbase comment delete 67890`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			client, err := cmdutil.CreateClient(cmd)
 			if err != nil {
 				return err
 			}
