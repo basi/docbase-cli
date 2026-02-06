@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/formatter"
-	"github.com/basi/docbase-cli/internal/utils"
-	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
+	"github.com/basi/docbase-cli/internal/fileio"
+	"github.com/basi/docbase-cli/internal/formatter"
+	"github.com/basi/docbase-cli/pkg/docbase"
 )
 
 var (
@@ -33,7 +35,7 @@ Example:
   docbase comment list 12345 --page 2 --per-page 20`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -46,7 +48,7 @@ Example:
 			page, _ := cmd.Flags().GetInt("page")
 			perPage, _ := cmd.Flags().GetInt("per-page")
 
-			commentList, err := client.Comment.List(memoID, page, perPage)
+			commentList, err := c.Comment.List(memoID, page, perPage)
 			if err != nil {
 				return err
 			}
@@ -60,12 +62,12 @@ Example:
 				fmt.Printf("Total Comments: %d\n", commentList.Meta.Total)
 				fmt.Println(strings.Repeat("-", 80))
 
-				for _, comment := range commentList.Comments {
-					fmt.Printf("ID: %d\n", comment.ID)
-					fmt.Printf("Author: %s\n", comment.User.Name)
-					fmt.Printf("Created At: %s\n", comment.CreatedAt.Format("2006-01-02 15:04:05"))
+				for _, cmt := range commentList.Comments {
+					fmt.Printf("ID: %d\n", cmt.ID)
+					fmt.Printf("Author: %s\n", cmt.User.Name)
+					fmt.Printf("Created At: %s\n", cmt.CreatedAt.Format("2006-01-02 15:04:05"))
 					fmt.Println(strings.Repeat("-", 40))
-					fmt.Println(comment.Body)
+					fmt.Println(cmt.Body)
 					fmt.Println(strings.Repeat("-", 80))
 				}
 
@@ -91,7 +93,7 @@ Example:
   docbase comment create 12345 --body-file comment.md`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -111,7 +113,7 @@ Example:
 
 			if body == "" && bodyFile != "" {
 				var err error
-				body, err = utils.ReadFile(bodyFile)
+				body, err = fileio.Read(bodyFile)
 				if err != nil {
 					return err
 				}
@@ -122,13 +124,13 @@ Example:
 				Notify: notify,
 			}
 
-			comment, err := client.Comment.Create(memoID, req)
+			cmt, err := c.Comment.Create(memoID, req)
 			if err != nil {
 				return err
 			}
 
 			fmt.Println(color.GreenString("Comment created successfully"))
-			fmt.Printf("ID: %d\n", comment.ID)
+			fmt.Printf("ID: %d\n", cmt.ID)
 			return nil
 		},
 	}
@@ -143,7 +145,7 @@ Example:
   docbase comment delete 67890`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := utils.CreateClient(cmd)
+			c, err := client.Create(cmd)
 			if err != nil {
 				return err
 			}
@@ -157,14 +159,14 @@ Example:
 			if !force {
 				fmt.Printf("Are you sure you want to delete comment %d? (y/N): ", commentID)
 				var confirm string
-				fmt.Scanln(&confirm)
+				_, _ = fmt.Scanln(&confirm)
 				if strings.ToLower(confirm) != "y" {
-					fmt.Println("Deletion cancelled")
+					fmt.Println("Deletion canceled")
 					return nil
 				}
 			}
 
-			if err := client.Comment.Delete(commentID); err != nil {
+			if err := c.Comment.Delete(commentID); err != nil {
 				return err
 			}
 

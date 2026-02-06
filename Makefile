@@ -4,7 +4,7 @@ BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GOPATH ?= $(shell go env GOPATH)
 LDFLAGS=-ldflags "-X github.com/basi/docbase-cli/cmd/root.Version=$(VERSION) -X github.com/basi/docbase-cli/cmd/root.BuildTime=$(BUILD_TIME)"
 
-.PHONY: all build clean install test lint fmt vet
+.PHONY: all build clean install test lint fmt lint-install
 
 all: clean build
 
@@ -26,16 +26,16 @@ test:
 	@go test -v ./...
 
 lint:
-	@echo "Running linter..."
-	@golint ./...
+	@echo "Running golangci-lint..."
+	@golangci-lint run ./...
+
+lint-install:
+	@echo "Installing golangci-lint..."
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
 fmt:
-	@echo "Running gofmt..."
-	@gofmt -s -w .
-
-vet:
-	@echo "Running go vet..."
-	@go vet ./...
+	@echo "Running golangci-lint fmt..."
+	@golangci-lint fmt ./...
 
 # Cross-compilation targets
 .PHONY: build-all build-darwin build-linux build-windows

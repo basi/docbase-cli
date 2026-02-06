@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/utils"
-	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
+	"github.com/basi/docbase-cli/pkg/docbase"
 )
 
 var (
@@ -60,7 +61,7 @@ Example:
 
 // runExport is the common export logic for both group and tag commands
 func runExport(cmd *cobra.Command, query string) error {
-	client, err := utils.CreateClient(cmd)
+	c, err := client.Create(cmd)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func runExport(cmd *cobra.Command, query string) error {
 
 	for {
 		fmt.Printf("Fetching page %d...\n", page)
-		memoList, err := client.Memo.List(page, perPage, query)
+		memoList, err := c.Memo.List(page, perPage, query)
 		if err != nil {
 			return err
 		}
@@ -104,7 +105,7 @@ func runExport(cmd *cobra.Command, query string) error {
 			}
 
 			// Get full memo details
-			fullMemo, err := client.Memo.Get(memo.ID)
+			fullMemo, err := c.Memo.Get(memo.ID)
 			if err != nil {
 				fmt.Printf("Error getting memo %d: %v, skipping\n", memo.ID, err)
 				continue
@@ -175,7 +176,7 @@ func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	switch format {
 	case "md":
@@ -185,8 +186,8 @@ func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
 		}
 
 		groupNames := make([]string, 0, len(memo.Groups))
-		for _, group := range memo.Groups {
-			groupNames = append(groupNames, group.Name)
+		for _, grp := range memo.Groups {
+			groupNames = append(groupNames, grp.Name)
 		}
 
 		frontmatter := memoFrontmatter{
