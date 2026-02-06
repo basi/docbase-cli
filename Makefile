@@ -31,11 +31,11 @@ lint:
 
 lint-install:
 	@echo "Installing golangci-lint..."
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
 fmt:
-	@echo "Running gofmt..."
-	@gofmt -s -w .
+	@echo "Running golangci-lint fmt..."
+	@golangci-lint fmt ./...
 
 # Cross-compilation targets
 .PHONY: build-all build-darwin build-linux build-windows
