@@ -290,7 +290,7 @@ func buildCreateMemoRequest(c *docbase.API, opts *importOptions, data *importMem
 	tags = dedupeStrings(tags)
 
 	var fileGroupIDs []int
-	if !(opts.overwrite && opts.groupNamesChanged) {
+	if !opts.overwrite || !opts.groupNamesChanged {
 		groupNames := dedupeStrings(normalizeStringSlice(data.Groups))
 		if len(groupNames) > 0 {
 			if groupMap == nil {
