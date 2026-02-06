@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+
 	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/fileio"
@@ -14,8 +17,6 @@ import (
 	"github.com/basi/docbase-cli/internal/formatter"
 	"github.com/basi/docbase-cli/internal/groups"
 	"github.com/basi/docbase-cli/pkg/docbase"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -316,9 +317,9 @@ Example:
 			if !force {
 				fmt.Printf("Are you sure you want to mark memo %d for deletion? (y/N): ", id)
 				var confirm string
-				fmt.Scanln(&confirm)
+				_, _ = fmt.Scanln(&confirm)
 				if strings.ToLower(confirm) != "y" {
-					fmt.Println("Operation cancelled")
+					fmt.Println("Operation canceled")
 					return nil
 				}
 			}

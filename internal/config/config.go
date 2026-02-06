@@ -68,7 +68,7 @@ func Save(config *Config) error {
 		return fmt.Errorf("failed to create temp config file: %w", err)
 	}
 	tmpName := tmpFile.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 
 	if _, err := tmpFile.Write(bytes); err != nil {
 		_ = tmpFile.Close()

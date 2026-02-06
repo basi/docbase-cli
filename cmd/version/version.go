@@ -3,8 +3,9 @@ package version
 import (
 	"fmt"
 
-	"github.com/basi/docbase-cli/cmd/root"
 	"github.com/spf13/cobra"
+
+	"github.com/basi/docbase-cli/cmd/root"
 )
 
 var (

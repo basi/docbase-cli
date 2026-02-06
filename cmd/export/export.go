@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/client"
-	"github.com/basi/docbase-cli/pkg/docbase"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
+	"github.com/basi/docbase-cli/pkg/docbase"
 )
 
 var (
@@ -175,7 +176,7 @@ func writeMemoToFile(memo *docbase.Memo, filepath string, format string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	switch format {
 	case "md":

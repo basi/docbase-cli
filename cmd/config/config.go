@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/basi/docbase-cli/cmd/root"
-	"github.com/basi/docbase-cli/internal/config"
-	"github.com/basi/docbase-cli/internal/formatter"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/config"
+	"github.com/basi/docbase-cli/internal/formatter"
 )
 
 var (
@@ -137,5 +138,5 @@ func init() {
 
 	// Add flags to get command
 	GetCmd.Flags().String("key", "", "Configuration key")
-	GetCmd.MarkFlagRequired("key")
+	_ = GetCmd.MarkFlagRequired("key")
 }
