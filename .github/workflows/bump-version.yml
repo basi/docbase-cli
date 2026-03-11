@@ -43,12 +43,10 @@ jobs:
           echo "Current version: $VERSION"
 
       - name: Create Tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
-        with:
-          github_token: ${{ secrets.GH_PAT }}
-          custom_tag: ${{ steps.version.outputs.version }}
-          tag_prefix: v
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf # v6.1.0
