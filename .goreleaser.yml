@@ -47,7 +47,7 @@ snapshot:
 brews:
   - repository:
       owner: basi
-      name: basi-homebrew-tap
+      name: homebrew-tap
       token: "{{ .Env.GH_PAT }}"
     directory: Formula
     homepage: "https://github.com/basi/docbase-cli"
