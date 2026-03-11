@@ -42,6 +42,20 @@ checksum:
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 
+brews:
+  - repository:
+      owner: basi
+      name: basi-homebrew-tap
+      token: "{{ .Env.GH_PAT }}"
+    directory: Formula
+    homepage: "https://github.com/basi/docbase-cli"
+    description: "Command-line interface for DocBase"
+    license: "MIT"
+    test: |
+      assert_match "DocBase CLI", shell_output("#{bin}/docbase --help")
+    install: |
+      bin.install "docbase"
+
 changelog:
   sort: asc
   filters:
