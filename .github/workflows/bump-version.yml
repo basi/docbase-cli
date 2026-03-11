@@ -1,4 +1,5 @@
 name: Create Release
+
 on:
   pull_request:
     types: [closed]
@@ -18,12 +19,17 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
-      
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6.3.0
+        with:
+          go-version-file: go.mod
+
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '24'
-      
+
       - name: Get Version from root.go
         id: version
         run: |
@@ -35,12 +41,7 @@ jobs:
           ")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
-      
-      - name: Package Binary
-        run: |
-          make build
-          zip -r docbase-cli.zip ./docbase-cli LICENSE README.md
-      
+
       - name: Create Tag
         id: tag_version
         uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
@@ -48,12 +49,13 @@ jobs:
           github_token: ${{ secrets.GH_PAT }}
           custom_tag: ${{ steps.version.outputs.version }}
           tag_prefix: v
-      
-      - name: Create Release
-        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf # v6.1.0
         with:
-          tag: ${{ steps.tag_version.outputs.new_tag }}
-          name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: ${{ steps.tag_version.outputs.changelog }}
-          artifacts: "extension.zip"
-          token: ${{ secrets.GH_PAT }}
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
