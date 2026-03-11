@@ -59,29 +59,3 @@ build-windows:
 	@mkdir -p dist/windows
 	@GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o dist/windows/$(BINARY_NAME).exe .
 
-# Homebrew formula target
-.PHONY: homebrew-formula
-
-homebrew-formula:
-	@echo "Generating Homebrew formula..."
-	@mkdir -p dist/homebrew
-	@echo "class Docbase < Formula" > dist/homebrew/$(BINARY_NAME).rb
-	@echo "  desc \"Command-line interface for DocBase\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  homepage \"https://github.com/basi/docbase-cli\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  url \"https://github.com/basi/docbase-cli/archive/v$(VERSION).tar.gz\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  sha256 \"REPLACE_WITH_ACTUAL_SHA256\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  license \"MIT\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  head \"https://github.com/basi/docbase-cli.git\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  depends_on \"go\" => :build" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  def install" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "    system \"go\", \"build\", *std_go_args, \"-ldflags\", \"-X github.com/basi/docbase-cli/cmd/root.Version=#{version}\"" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  end" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  test do" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "    assert_match \"DocBase CLI\", shell_output(\"\#{bin}/docbase --help\")" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "  end" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "end" >> dist/homebrew/$(BINARY_NAME).rb
-	@echo "Homebrew formula generated at dist/homebrew/$(BINARY_NAME).rb"
-	@echo "Note: You need to replace REPLACE_WITH_ACTUAL_SHA256 with the actual SHA256 of the tarball."
