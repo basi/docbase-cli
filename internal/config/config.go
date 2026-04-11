@@ -11,10 +11,10 @@ import (
 
 // Config represents the configuration
 type Config struct {
-	TeamDomain   string `mapstructure:"team_domain"`
-	AccessToken  string `mapstructure:"access_token"`
-	OutputFormat string `mapstructure:"output_format"`
-	DefaultGroup string `mapstructure:"default_group"`
+	TeamDomain   string `mapstructure:"team_domain"   json:"team_domain"`
+	AccessToken  string `mapstructure:"access_token"  json:"access_token"`
+	OutputFormat string `mapstructure:"output_format" json:"output_format"`
+	DefaultGroup string `mapstructure:"default_group" json:"default_group"`
 }
 
 // Load loads the configuration from the config file
