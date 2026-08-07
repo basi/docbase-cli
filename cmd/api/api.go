@@ -173,6 +173,52 @@ Example:
 		},
 	}
 
+	// PatchCmd represents the api patch command
+	PatchCmd = &cobra.Command{
+		Use:   "patch [path]",
+		Short: "Make a PATCH request",
+		Long: `Make a PATCH request to DocBase API.
+
+Example:
+  docbase api patch /posts/12345/body --data '{"operations":[{"start":3,"end":3,"old_content":"old","content":"new"}]}'`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := client.Create(cmd)
+			if err != nil {
+				return err
+			}
+
+			path := args[0]
+			data, _ := cmd.Flags().GetString("data")
+			if data == "" {
+				return fmt.Errorf("data is required")
+			}
+
+			var jsonData any
+			if err := json.Unmarshal([]byte(data), &jsonData); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
+
+			resp, err := c.Patch(path, jsonData)
+			if err != nil {
+				return err
+			}
+
+			if resp.IsError() {
+				return fmt.Errorf("API error: %s", resp.Status())
+			}
+
+			var respData any
+			if err := json.Unmarshal(resp.Body(), &respData); err != nil {
+				return fmt.Errorf("failed to parse response: %w", err)
+			}
+
+			outputFormat, _ := cmd.Flags().GetString("format")
+			f := formatter.NewFormatter(outputFormat, os.Stdout, true)
+			return f.Print(respData)
+		},
+	}
+
 	// DeleteCmd represents the api delete command
 	DeleteCmd = &cobra.Command{
 		Use:   "delete [path]",
@@ -212,6 +258,7 @@ func init() {
 	APICmd.AddCommand(GetCmd)
 	APICmd.AddCommand(PostCmd)
 	APICmd.AddCommand(PutCmd)
+	APICmd.AddCommand(PatchCmd)
 	APICmd.AddCommand(DeleteCmd)
 
 	// Add flags to post command
@@ -221,4 +268,8 @@ func init() {
 	// Add flags to put command
 	PutCmd.Flags().String("data", "", "JSON data for the request")
 	_ = PutCmd.MarkFlagRequired("data")
+
+	// Add flags to patch command
+	PatchCmd.Flags().String("data", "", "JSON data for the request")
+	_ = PatchCmd.MarkFlagRequired("data")
 }

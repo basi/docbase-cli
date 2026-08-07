@@ -4,7 +4,11 @@ This file contains the version history and updates for DocBase CLI.
 
 ## [Unreleased]
 
-No unreleased changes at this time.
+### Added
+
+- `docbase memo patch-body <id>` command — line-by-line partial update of memo body via `PATCH /posts/:id/body`. Uses `old_content` as a safety guard against accidental overwrites. `--include-body` returns the updated body in the response.
+- `--exclude-body` flag for `docbase memo create` and `docbase memo edit` — omits the body from the API response to reduce bandwidth on large memos.
+- `docbase api patch <path>` subcommand — generic PATCH passthrough, consistent with existing `api get/post/put/delete`.
 
 ## [0.0.7] - 2025-03-19
 

@@ -1,6 +1,7 @@
 package memo
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -152,6 +153,7 @@ Example:
 			groupNames, _ := cmd.Flags().GetStringSlice("group")
 			tagNames, _ := cmd.Flags().GetStringSlice("tag")
 			notify, _ := cmd.Flags().GetBool("notify")
+			excludeBody, _ := cmd.Flags().GetBool("exclude-body")
 
 			if title == "" {
 				return fmt.Errorf("title is required")
@@ -176,13 +178,14 @@ Example:
 			}
 
 			req := &docbase.CreateMemoRequest{
-				Title:  title,
-				Body:   body,
-				Draft:  draft,
-				Tags:   tagNames,
-				Scope:  scope,
-				Groups: groupIDs,
-				Notify: notify,
+				Title:       title,
+				Body:        body,
+				Draft:       draft,
+				Tags:        tagNames,
+				Scope:       scope,
+				Groups:      groupIDs,
+				Notify:      notify,
+				ExcludeBody: excludeBody,
 			}
 
 			memo, err := c.Memo.Create(req)
@@ -229,6 +232,7 @@ Example:
 			tagNames, _ := cmd.Flags().GetStringSlice("tag")
 			notify, _ := cmd.Flags().GetBool("notify")
 			notifyChanged := cmd.Flags().Changed("notify")
+			excludeBody, _ := cmd.Flags().GetBool("exclude-body")
 
 			if body == "" && bodyFile != "" {
 				var err error
@@ -254,13 +258,14 @@ Example:
 			}
 
 			req := &docbase.UpdateMemoRequest{
-				Title:  title,
-				Body:   body,
-				Draft:  draftPtr,
-				Tags:   tagNames,
-				Scope:  scope,
-				Groups: groupIDs,
-				Notify: notifyPtr,
+				Title:       title,
+				Body:        body,
+				Draft:       draftPtr,
+				Tags:        tagNames,
+				Scope:       scope,
+				Groups:      groupIDs,
+				Notify:      notifyPtr,
+				ExcludeBody: excludeBody,
 			}
 
 			memo, err := c.Memo.Update(id, req)
@@ -501,6 +506,93 @@ Example:
 			return f.Print(memoList)
 		},
 	}
+	// PatchBodyCmd represents the memo patch-body command
+	PatchBodyCmd = &cobra.Command{
+		Use:   "patch-body [id]",
+		Short: "Partially update a memo body line-by-line",
+		Long: `Partially update specific lines in a memo body.
+
+Each operation targets a 1-indexed line range. old_content must match the
+current text exactly — if it doesn't the API rejects the update, preventing
+accidental overwrites.
+
+--op accepts a JSON object (single operation) or a JSON array (multiple operations):
+
+  docbase memo patch-body 12345 \
+    --op '{"start":3,"end":3,"old_content":"old line","content":"new line"}'
+
+  docbase memo patch-body 12345 \
+    --op '[{"start":3,"end":5,"old_content":"old\r\nlines","content":"new"}]' \
+    --include-body`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := client.Create(cmd)
+			if err != nil {
+				return err
+			}
+
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid memo ID: %s", args[0])
+			}
+
+			opStr, _ := cmd.Flags().GetString("op")
+			if opStr == "" {
+				return fmt.Errorf("--op is required")
+			}
+
+			var ops []docbase.PatchBodyOperation
+			raw := []byte(opStr)
+			if err := json.Unmarshal(raw, &ops); err != nil {
+				var single docbase.PatchBodyOperation
+				if err2 := json.Unmarshal(raw, &single); err2 != nil {
+					return fmt.Errorf("--op must be a JSON object or array: %w", err)
+				}
+				ops = []docbase.PatchBodyOperation{single}
+			}
+
+			if len(ops) == 0 {
+				return fmt.Errorf("at least one operation required")
+			}
+			for i, op := range ops {
+				if op.Start == 0 || op.End == 0 {
+					return fmt.Errorf("op[%d]: start and end are 1-indexed and required", i)
+				}
+			}
+
+			includeBody, _ := cmd.Flags().GetBool("include-body")
+			notify, _ := cmd.Flags().GetBool("notify")
+			notifyChanged := cmd.Flags().Changed("notify")
+
+			var notifyPtr *bool
+			if notifyChanged {
+				notifyPtr = &notify
+			}
+
+			req := &docbase.PatchBodyRequest{
+				Operations:  ops,
+				Notice:      notifyPtr,
+				IncludeBody: includeBody,
+			}
+
+			memo, err := c.Memo.PatchBody(id, req)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(color.GreenString("Memo body patched successfully"))
+			fmt.Printf("ID: %d\n", memo.ID)
+			if memo.URL != "" {
+				fmt.Printf("URL: %s\n", memo.URL)
+			}
+			if includeBody && memo.Body != "" {
+				fmt.Println(strings.Repeat("-", 80))
+				fmt.Println(memo.Body)
+			}
+
+			return nil
+		},
+	}
 )
 
 func init() {
@@ -516,6 +608,7 @@ func init() {
 	MemoCmd.AddCommand(ArchiveCmd)
 	MemoCmd.AddCommand(UnarchiveCmd)
 	MemoCmd.AddCommand(SearchCmd)
+	MemoCmd.AddCommand(PatchBodyCmd)
 
 	// Add flags to list command
 	ListCmd.Flags().Int("page", 1, "Page number")
@@ -531,6 +624,7 @@ func init() {
 	CreateCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
 	CreateCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
 	CreateCmd.Flags().Bool("notify", false, "Send notification")
+	CreateCmd.Flags().Bool("exclude-body", false, "Omit body from response to reduce bandwidth")
 
 	// Add flags to edit command
 	EditCmd.Flags().String("title", "", "Memo title")
@@ -541,6 +635,13 @@ func init() {
 	EditCmd.Flags().StringSlice("group", []string{}, "Group names (can be specified multiple times)")
 	EditCmd.Flags().StringSlice("tag", []string{}, "Tags (can be specified multiple times)")
 	EditCmd.Flags().Bool("notify", false, "Send notification")
+	EditCmd.Flags().Bool("exclude-body", false, "Omit body from response to reduce bandwidth")
+
+	// Add flags to patch-body command
+	PatchBodyCmd.Flags().String("op", "", "Patch operation(s) as JSON object or array (required)")
+	PatchBodyCmd.Flags().Bool("include-body", false, "Include updated body in response")
+	PatchBodyCmd.Flags().Bool("notify", false, "Send notification (server default: true; specify --notify=false to disable)")
+	_ = PatchBodyCmd.MarkFlagRequired("op")
 
 	// Add flags to delete command
 	DeleteCmd.Flags().Bool("force", false, "Force deletion without confirmation")

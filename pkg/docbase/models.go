@@ -120,28 +120,45 @@ type CommentResponse struct {
 
 // CreateMemoRequest represents the request for creating a memo
 type CreateMemoRequest struct {
-	Title  string   `json:"title"`
-	Body   string   `json:"body"`
-	Draft  bool     `json:"draft,omitempty"`
-	Tags   []string `json:"tags,omitempty"`
-	Scope  string   `json:"scope,omitempty"`
-	Groups []int    `json:"groups,omitempty"`
-	Notify bool     `json:"notice,omitempty"`
+	Title       string   `json:"title"`
+	Body        string   `json:"body"`
+	Draft       bool     `json:"draft,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Scope       string   `json:"scope,omitempty"`
+	Groups      []int    `json:"groups,omitempty"`
+	Notify      bool     `json:"notice,omitempty"`
+	ExcludeBody bool     `json:"exclude_body,omitempty"`
 }
 
 // UpdateMemoRequest represents the request for updating a memo
 type UpdateMemoRequest struct {
-	Title  string   `json:"title,omitempty"`
-	Body   string   `json:"body,omitempty"`
-	Draft  *bool    `json:"draft,omitempty"`
-	Tags   []string `json:"tags,omitempty"`
-	Scope  string   `json:"scope,omitempty"`
-	Groups []int    `json:"groups,omitempty"`
-	Notify *bool    `json:"notice,omitempty"`
+	Title       string   `json:"title,omitempty"`
+	Body        string   `json:"body,omitempty"`
+	Draft       *bool    `json:"draft,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Scope       string   `json:"scope,omitempty"`
+	Groups      []int    `json:"groups,omitempty"`
+	Notify      *bool    `json:"notice,omitempty"`
+	ExcludeBody bool     `json:"exclude_body,omitempty"`
 }
 
 // CreateCommentRequest represents the request for creating a comment
 type CreateCommentRequest struct {
 	Body   string `json:"body"`
 	Notify bool   `json:"notice,omitempty"`
+}
+
+// PatchBodyOperation is one line-range replacement in a memo body
+type PatchBodyOperation struct {
+	Start      int    `json:"start"`
+	End        int    `json:"end"`
+	OldContent string `json:"old_content"`
+	Content    string `json:"content"`
+}
+
+// PatchBodyRequest represents the request for PATCH /posts/:id/body
+type PatchBodyRequest struct {
+	Operations  []PatchBodyOperation `json:"operations"`
+	Notice      *bool                `json:"notice,omitempty"`
+	IncludeBody bool                 `json:"include_body,omitempty"`
 }

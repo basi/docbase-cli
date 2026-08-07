@@ -86,6 +86,8 @@ func (c *Client) Request(method, path string, body any, result any, opts ...Requ
 		resp, err = req.Put(url)
 	case "DELETE":
 		resp, err = req.Delete(url)
+	case "PATCH":
+		resp, err = req.Patch(url)
 	default:
 		return fmt.Errorf("unsupported method: %s", method)
 	}
@@ -156,4 +158,10 @@ func (c *Client) Put(path string, body any) (*resty.Response, error) {
 func (c *Client) Delete(path string) (*resty.Response, error) {
 	url := c.buildURL(path, nil)
 	return c.httpClient.R().Delete(url)
+}
+
+// Patch sends a PATCH request to the API
+func (c *Client) Patch(path string, body any) (*resty.Response, error) {
+	url := c.buildURL(path, nil)
+	return c.httpClient.R().SetBody(body).Patch(url)
 }

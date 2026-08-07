@@ -124,6 +124,34 @@ func (s *MemoService) Update(id int, req *UpdateMemoRequest) (*Memo, error) {
 	return nil, fmt.Errorf("failed to parse update memo response: %d", id)
 }
 
+// PatchBody applies line-range replacements to a memo body
+func (s *MemoService) PatchBody(id int, req *PatchBodyRequest) (*Memo, error) {
+	path := fmt.Sprintf("/posts/%d/body", id)
+	resp, err := s.client.Patch(path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.IsError() {
+		return nil, s.client.errorFromResponse(resp)
+	}
+
+	body := resp.Body()
+
+	var memoResp MemoResponse
+	if err := json.Unmarshal(body, &memoResp); err == nil && memoResp.Memo.ID != 0 {
+		return &memoResp.Memo, nil
+	}
+
+	var memo Memo
+	if err := json.Unmarshal(body, &memo); err == nil && memo.ID != 0 {
+		return &memo, nil
+	}
+
+	// When include_body is false the API may return minimal JSON or empty body.
+	return &Memo{ID: id}, nil
+}
+
 // Delete deletes a memo
 func (s *MemoService) Delete(id int) error {
 	path := fmt.Sprintf("/posts/%d", id)

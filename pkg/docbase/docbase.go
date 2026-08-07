@@ -53,6 +53,11 @@ func (a *API) Put(path string, body any) (*resty.Response, error) {
 	return a.client.Put(path, body)
 }
 
+// Patch sends a PATCH request to the API
+func (a *API) Patch(path string, body any) (*resty.Response, error) {
+	return a.client.Patch(path, body)
+}
+
 // Delete sends a DELETE request to the API
 func (a *API) Delete(path string) (*resty.Response, error) {
 	return a.client.Delete(path)
