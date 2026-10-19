@@ -108,6 +108,21 @@ docbase memo create --title "Test Memo" --body "This is a test memo" --group "�
 # Edit a memo
 docbase memo edit 12345 --title "Updated Title"
 
+# Create a memo (body excluded from response to reduce bandwidth)
+docbase memo create --title "Title" --body "Content" --group "全員" --exclude-body
+
+# Edit a memo (body excluded from response)
+docbase memo edit 12345 --title "Updated Title" --exclude-body
+
+# Partially update a memo body line-by-line (1-indexed start/end)
+docbase memo patch-body 12345 \
+  --op '{"start":3,"end":3,"old_content":"old line","content":"new line"}'
+
+# Patch with multiple operations and return updated body
+docbase memo patch-body 12345 \
+  --op '[{"start":3,"end":3,"old_content":"old","content":"new"}]' \
+  --include-body
+
 # Delete a memo
 docbase memo delete 12345
 ```
@@ -175,6 +190,9 @@ docbase api get /posts?q=tag:weekly
 
 # Make a POST request
 docbase api post /posts --data '{"title":"Test","body":"Test body","draft":false,"tags":["test"],"scope":"group","groups":[1],"notice":false}'
+
+# Make a PATCH request
+docbase api patch /posts/12345/body --data '{"operations":[{"start":3,"end":3,"old_content":"old line","content":"new line"}]}'
 ```
 
 ## Shell Completion
