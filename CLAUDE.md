@@ -34,6 +34,7 @@ Package names follow Go conventions: https://go.dev/blog/package-names
   - Thin wrappers that call pkg/docbase services
 - **`internal/`** - Shared CLI utilities
   - `config/` - JSON config at `~/.config/docbase/config.json`
+  - `credential/` - Access token storage in the OS credential store (go-keyring)
   - `client/` - Client factory (`Create()`) and flag helpers
   - `formatter/` - Output formatting (text, JSON, YAML)
   - `format/` - String formatting helpers

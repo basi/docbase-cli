@@ -74,6 +74,20 @@ To use DocBase CLI, you need to authenticate with your DocBase team and API toke
 docbase auth login --team your-team --token your-access-token
 ```
 
+The token is stored per team domain in your operating system's credential store (macOS Keychain, Windows Credential Manager, or Secret Service on Linux), not in the config file. To keep the token out of your shell history, pass it through the environment instead of `--token`:
+
+```bash
+DOCBASE_API_TOKEN=your-access-token docbase auth login --team your-team
+```
+
+The access token is resolved in this order: the `--token` flag, the `DOCBASE_API_TOKEN` environment variable, then the stored token.
+
+#### Upgrading from earlier versions
+
+Earlier versions stored the token in plaintext in `~/.config/docbase/config.json`. It is moved to the credential store automatically the first time a command needs it. If the credential store is unavailable, the plaintext token keeps working and a warning is printed to stderr.
+
+The `ACCESS_TOKEN` environment variable is no longer read; use `DOCBASE_API_TOKEN` instead.
+
 ### Configuration
 
 You can view and modify your configuration using the `config` command:
@@ -86,6 +100,13 @@ docbase config list
 docbase config set --team your-team
 docbase config set --output-format json
 ```
+
+#### Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `DOCBASE_API_TOKEN` | Access token to use without saving it. Overrides the stored token, but not `--token`. |
+| `DOCBASE_INSECURE_STORAGE` | Set to `1` to store the token in plaintext in the config file (mode 0600) instead of the credential store. For headless Linux or CI environments without a credential store. |
 
 ## Usage Examples
 

@@ -29,6 +29,7 @@ var (
 
 Example:
   docbase config set --team your-team
+  docbase config set --token your-access-token
   docbase config set --output-format json
   docbase config set --default-group "全員"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,8 +47,11 @@ Example:
 				cfg.TeamDomain = teamDomain
 			}
 
+			// Store the token before saving the config so that a failure saves nothing
 			if accessToken != "" {
-				cfg.AccessToken = accessToken
+				if err := config.StoreAccessToken(cfg.TeamDomain, accessToken); err != nil {
+					return fmt.Errorf("failed to save access token: %w", err)
+				}
 			}
 
 			if outputFormat != "" {
@@ -82,7 +86,11 @@ Example:
 				return fmt.Errorf("key is required")
 			}
 
-			value := viper.GetString(key)
+			value, err := config.DisplayValue(key)
+			if err != nil {
+				return err
+			}
+
 			if value == "" {
 				fmt.Printf("%s: not set\n", key)
 			} else {
