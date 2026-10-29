@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,6 +35,10 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamDomain, _ := cmd.Flags().GetString("team")
 			accessToken, _ := cmd.Flags().GetString("token")
+			if accessToken == "" {
+				// Lets users keep the token out of argv and shell history
+				accessToken = os.Getenv(config.EnvAPIToken)
+			}
 
 			if teamDomain == "" {
 				return fmt.Errorf("team domain is required")
@@ -50,9 +56,12 @@ Example:
 			}
 
 			// Save the credentials
+			if err := config.StoreAccessToken(teamDomain, accessToken); err != nil {
+				return fmt.Errorf("failed to save access token: %w", err)
+			}
+
 			cfg := &config.Config{
 				TeamDomain:   teamDomain,
-				AccessToken:  accessToken,
 				OutputFormat: "text",
 			}
 
@@ -71,25 +80,31 @@ Example:
 		Short: "Show authentication status",
 		Long:  `Show authentication status with DocBase API.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
+			teamDomain := config.GetTeamDomain(cmd.Flag("team").Value.String())
+			if teamDomain == "" {
+				fmt.Println(color.YellowString("Not logged in to DocBase"))
+				return nil
 			}
 
-			if cfg.TeamDomain == "" || cfg.AccessToken == "" {
+			accessToken, err := config.ResolveAccessToken(teamDomain, cmd.Flag("token").Value.String())
+			if err != nil {
+				// Not having a token is the normal logged-out state; anything else is worth showing.
+				if !errors.Is(err, config.ErrNoToken) {
+					fmt.Fprintln(os.Stderr, err)
+				}
 				fmt.Println(color.YellowString("Not logged in to DocBase"))
 				return nil
 			}
 
 			// Test the credentials
-			api := docbase.NewAPI(cfg.TeamDomain, cfg.AccessToken)
+			api := docbase.NewAPI(teamDomain, accessToken)
 			_, err = api.Group.List(1, 1)
 			if err != nil {
-				fmt.Println(color.YellowString("Logged in as team: %s, but authentication failed: %v", cfg.TeamDomain, err))
+				fmt.Println(color.YellowString("Logged in as team: %s, but authentication failed: %v", teamDomain, err))
 				return nil
 			}
 
-			fmt.Println(color.GreenString("Logged in to DocBase as team: %s", cfg.TeamDomain))
+			fmt.Println(color.GreenString("Logged in to DocBase as team: %s", teamDomain))
 			return nil
 		},
 	}
@@ -105,20 +120,29 @@ Example:
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-			if cfg.TeamDomain == "" || cfg.AccessToken == "" {
+			teamDomain := config.GetTeamDomain(cmd.Flag("team").Value.String())
+
+			// Remove the stored token first; this also wipes a plaintext token that has no team
+			if err := config.DeleteAccessToken(teamDomain); err != nil {
+				return fmt.Errorf("failed to remove access token: %w", err)
+			}
+
+			if teamDomain == "" {
 				fmt.Println(color.YellowString("Not logged in to DocBase"))
 				return nil
 			}
 
 			// Clear the credentials
 			cfg.TeamDomain = ""
-			cfg.AccessToken = ""
 
 			if err := config.Save(cfg); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
 			fmt.Println(color.GreenString("Successfully logged out from DocBase"))
+			if os.Getenv(config.EnvAPIToken) != "" {
+				fmt.Fprintf(os.Stderr, "note: %s is still set in the environment and will continue to be used\n", config.EnvAPIToken)
+			}
 			return nil
 		},
 	}

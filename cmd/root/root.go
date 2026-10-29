@@ -54,13 +54,12 @@ func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/docbase/config.json)")
 	rootCmd.PersistentFlags().StringVar(&teamDomain, "team", "", "DocBase team domain")
-	rootCmd.PersistentFlags().StringVar(&accessToken, "token", "", "DocBase API access token")
+	rootCmd.PersistentFlags().StringVar(&accessToken, "token", "", "DocBase API access token (prefer the DOCBASE_API_TOKEN environment variable)")
 	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "text", "Output format (text, json, yaml)")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Enable verbose output")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("team_domain", rootCmd.PersistentFlags().Lookup("team"))
-	_ = viper.BindPFlag("access_token", rootCmd.PersistentFlags().Lookup("token"))
 	_ = viper.BindPFlag("output_format", rootCmd.PersistentFlags().Lookup("format"))
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }

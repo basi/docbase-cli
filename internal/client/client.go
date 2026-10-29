@@ -26,14 +26,14 @@ func CheckRequiredFlags(cmd *cobra.Command, flagNames ...string) error {
 // Create creates a DocBase API client
 func Create(cmd *cobra.Command) (*docbase.API, error) {
 	teamDomain := config.GetTeamDomain(cmd.Flag("team").Value.String())
-	accessToken := config.GetAccessToken(cmd.Flag("token").Value.String())
 
 	if teamDomain == "" {
 		return nil, fmt.Errorf("team domain is required")
 	}
 
-	if accessToken == "" {
-		return nil, fmt.Errorf("access token is required")
+	accessToken, err := config.ResolveAccessToken(teamDomain, cmd.Flag("token").Value.String())
+	if err != nil {
+		return nil, err
 	}
 
 	return docbase.NewAPI(teamDomain, accessToken), nil
