@@ -43,6 +43,12 @@ Example:
 			outputFormat, _ := cmd.Flags().GetString("output-format")
 			defaultGroup, _ := cmd.Flags().GetString("default-group")
 
+			if accessToken != "" {
+				if err := config.RejectInBrokerMode("config set --token"); err != nil {
+					return err
+				}
+			}
+
 			if teamDomain != "" {
 				cfg.TeamDomain = teamDomain
 			}

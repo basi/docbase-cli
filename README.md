@@ -13,6 +13,7 @@ DocBase CLI is a command-line interface for [DocBase](https://docbase.io/), a kn
 - Tag operations (list, search)
 - Comment operations (list, create, delete)
 - Direct API access
+- A token broker that lets an AI agent use DocBase read-only without being able to read the token (Linux)
 - Export memos to local files
 - Import memos from local files
 - Shell completion for Bash, Zsh, Fish, and PowerShell
@@ -103,6 +104,39 @@ Use a dedicated token with read-only scope and an expiry. If the fetched content
 
 Do not reference the DocBase secret in a job that runs an AI agent: a runner keeps every secret its job references in memory, and on hosted runners the agent can become root. Fetch in a separate job and pass the result to the agent job as an artifact.
 
+### Using DocBase from an AI agent without exposing the token (`docbase broker`)
+
+`docbase broker` lets an AI agent run read-only `docbase` commands without being able to read the access token. A trusted step starts a broker process that holds the token in memory and serves read-only DocBase requests for one team on a Unix socket. The agent's environment contains only the socket path, in `DOCBASE_BROKER_SOCKET`. While that variable is set, `docbase` sends its requests to the broker and never looks for a token itself. The broker runs on Linux only.
+
+```yaml
+- name: Start DocBase broker
+  env:
+    DOCBASE_API_TOKEN: ${{ secrets.DOCBASE_API_TOKEN }}
+  run: docbase broker start --team your-team --ttl 30m >> "$GITHUB_ENV"
+# ... drop sudo/containers, then run the agent; it sees only DOCBASE_BROKER_SOCKET
+- name: Stop DocBase broker
+  if: always()
+  run: docbase broker stop || true
+```
+
+`docbase broker start` prints `DOCBASE_BROKER_SOCKET=<path>` as the only line on stdout (messages go to stderr), so the line can be appended to `$GITHUB_ENV`.
+
+- **The agent must not be able to become root.** The broker protects the token from other processes of the same user that are not root: the token never appears in the arguments, the environment or a file of the broker, the broker process cannot be dumped, so `/proc/<pid>/environ`, `/proc/<pid>/mem` and core files are closed to other non-root processes, and only the user that started it can use its socket. Root can read the memory of any process. Unlike the separate-job pattern above, the secret is referenced in the job that runs the agent, so remove `sudo` and container access before the agent step, for example with a runner-hardening action.
+- **Use a read-only, AI-use token.** Create a dedicated token with read-only scope and an expiry, and enable its AI-use option so that DocBase excludes groups and `no-ai` memos that are not allowed for AI.
+- **Start the broker before anything untrusted runs.** The broker keeps the token from processes that start after it reported ready. A process of the same user that is already running while `docbase broker start` runs can take the token while it is handed over: it can read the standard input of the new broker process before that process has hardened itself, or answer in its place on the status pipe. Such a process can equally read the environment of the start step or the credential store the token came from, so this is inherent and not something the broker can close. Start the broker before the agent, and on a machine where other programs of the same user are running (a shared desktop, for example) assume that those programs can read the token anyway.
+- **The broker protects only the token it holds.** A token saved with `docbase auth login` in the operating system's credential store, or exported in the environment of the agent, stays readable by the agent. Pass the token to the step that starts the broker only, as in the example above.
+- **Read-only.** The broker forwards `GET` requests for the team it was started for and nothing else. It answers other methods, other teams, other paths and unknown query parameters with an error. The allowed endpoints are the ones the read commands use:
+  - `/teams/{team}/posts` (`q`, `page`, `per_page`)
+  - `/teams/{team}/posts/{id}`
+  - `/teams/{team}/posts/{id}/comments` (`page`, `per_page`)
+  - `/teams/{team}/groups` (`page`, `per_page`)
+  - `/teams/{team}/groups/{id}`
+  - `/teams/{team}/tags` (`q`, `page`, `per_page`)
+
+  So `memo list|search|view`, `comment list`, `group list|view|members`, `tag list|search`, `export` and `api get` of these paths work; commands that write get an error. `page` is 1 to 10000 and `per_page` is 1 to 100.
+- **TTL and stop.** The broker stops by itself after `--ttl` (default 1 hour, from 1 minute to 12 hours) and removes its socket. `docbase broker stop` stops it earlier and `docbase broker status` shows its team and expiry time. Both read `DOCBASE_BROKER_SOCKET`, or `--socket`.
+- **Broker mode.** `--token` and `DOCBASE_API_TOKEN` cannot be combined with `DOCBASE_BROKER_SOCKET`, `--team` must name the broker's team, and `docbase auth login`, `docbase auth logout` and `docbase config set --token` are refused. Broker mode is never left by accident: a `DOCBASE_BROKER_SOCKET` that is set but empty is an error, not a way back to direct access, and an unreachable broker is an error too. In broker mode `docbase` needs neither a home directory nor a config file. The broker, and the token check that `docbase broker start` makes before it starts one, ignore the proxy settings of the environment, do not follow redirects, and talk to the official DocBase API only.
+
 ### Configuration
 
 You can view and modify your configuration using the `config` command:
@@ -121,6 +155,7 @@ docbase config set --output-format json
 | Variable | Description |
 | --- | --- |
 | `DOCBASE_API_TOKEN` | Access token to use without saving it. Overrides the stored token, but not `--token`. |
+| `DOCBASE_BROKER_SOCKET` | Socket of a running `docbase broker`. While it is set, requests go through the broker, which holds the token; see [above](#using-docbase-from-an-ai-agent-without-exposing-the-token-docbase-broker). |
 | `DOCBASE_INSECURE_STORAGE` | Last resort for long-lived machines without a credential store: set to `1` to store the token in plaintext in the config file (mode 0600) instead of the credential store. In CI, use `DOCBASE_API_TOKEN` instead. |
 
 ## Usage Examples

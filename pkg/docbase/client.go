@@ -3,6 +3,7 @@ package docbase
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -26,11 +27,15 @@ type Client struct {
 	BaseURL     string
 }
 
-// NewClient creates a new DocBase API client
+// NewClient creates a new DocBase API client.
+// An empty access token sends no X-DocBaseToken header, for a transport that
+// reaches the API without the client holding the token (see SetTransport).
 func NewClient(teamDomain, accessToken string) *Client {
 	client := resty.New()
 	client.SetTimeout(DefaultTimeout)
-	client.SetHeader("X-DocBaseToken", accessToken)
+	if accessToken != "" {
+		client.SetHeader("X-DocBaseToken", accessToken)
+	}
 	client.SetHeader("X-Api-Version", APIVersion)
 	client.SetHeader("Content-Type", "application/json")
 
@@ -115,6 +120,11 @@ func (c *Client) SetBaseURL(baseURL string) {
 // SetTimeout sets the timeout for API requests
 func (c *Client) SetTimeout(timeout time.Duration) {
 	c.httpClient.SetTimeout(timeout)
+}
+
+// SetTransport sets the transport that carries API requests
+func (c *Client) SetTransport(rt http.RoundTripper) {
+	c.httpClient.SetTransport(rt)
 }
 
 // buildURL builds the URL for the API request

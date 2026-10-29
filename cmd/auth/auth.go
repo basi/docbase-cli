@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/basi/docbase-cli/cmd/root"
+	"github.com/basi/docbase-cli/internal/client"
 	"github.com/basi/docbase-cli/internal/config"
 	"github.com/basi/docbase-cli/pkg/docbase"
 )
@@ -33,6 +34,10 @@ https://[your-team].docbase.io/settings/tokens
 Example:
   docbase auth login --team your-team --token your-access-token`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := config.RejectInBrokerMode("auth login"); err != nil {
+				return err
+			}
+
 			teamDomain, _ := cmd.Flags().GetString("team")
 			accessToken, _ := cmd.Flags().GetString("token")
 			if accessToken == "" {
@@ -80,6 +85,12 @@ Example:
 		Short: "Show authentication status",
 		Long:  `Show authentication status with DocBase API.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// A broker variable that is set but empty gives an empty socket here; the
+			// client refuses that, so it never leads back to direct access.
+			if socket, active, _ := config.BrokerMode(); active {
+				return brokerStatus(cmd, socket)
+			}
+
 			teamDomain := config.GetTeamDomain(cmd.Flag("team").Value.String())
 			if teamDomain == "" {
 				fmt.Println(color.YellowString("Not logged in to DocBase"))
@@ -115,6 +126,10 @@ Example:
 		Short: "Logout from DocBase",
 		Long:  `Logout from DocBase by removing the saved credentials.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := config.RejectInBrokerMode("auth logout"); err != nil {
+				return err
+			}
+
 			cfg, err := config.Load()
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
@@ -147,6 +162,28 @@ Example:
 		},
 	}
 )
+
+// brokerStatus shows the authentication status while a broker holds the access
+// token: the team comes from the broker and the credentials are tested through it.
+// A broker that cannot be used counts as not logged in; the reason goes to stderr.
+func brokerStatus(cmd *cobra.Command, socket string) error {
+	out := cmd.OutOrStdout()
+
+	api, teamDomain, err := client.CreateForBroker(cmd, socket)
+	if err != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err)
+		_, _ = fmt.Fprintln(out, color.YellowString("Not logged in to DocBase"))
+		return nil
+	}
+
+	if _, err := api.Group.List(1, 1); err != nil {
+		_, _ = fmt.Fprintln(out, color.YellowString("Logged in as team: %s, but authentication failed: %v", teamDomain, err))
+		return nil
+	}
+
+	_, _ = fmt.Fprintln(out, color.GreenString("Logged in to DocBase as team: %s", teamDomain))
+	return nil
+}
 
 func init() {
 	// Add auth command to root command

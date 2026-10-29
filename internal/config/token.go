@@ -19,6 +19,10 @@ const (
 	// EnvInsecureStorage, when true, keeps the access token in the config file
 	// instead of the OS credential store.
 	EnvInsecureStorage = "DOCBASE_INSECURE_STORAGE"
+	// EnvBrokerSocket names the Unix socket of a running 'docbase broker'. While it
+	// is set (see BrokerMode), API requests go through the broker, which holds the
+	// access token.
+	EnvBrokerSocket = "DOCBASE_BROKER_SOCKET"
 	// legacyEnvToken was picked up through viper.AutomaticEnv() by older
 	// versions; it is no longer read as a token.
 	legacyEnvToken = "ACCESS_TOKEN"
@@ -35,6 +39,37 @@ var ErrNoToken = errors.New("access token is required")
 func InsecureStorage() bool {
 	insecure, err := strconv.ParseBool(os.Getenv(EnvInsecureStorage))
 	return err == nil && insecure
+}
+
+// BrokerMode reports whether this run goes through a broker, and the socket of the
+// broker. It is the one place that decides the mode: the variable being set at all
+// puts the run in broker mode. Set but empty is an error, never a way back to
+// credentials of the run's own: a run that was meant to use the broker must not
+// quietly use something else.
+func BrokerMode() (socket string, active bool, err error) {
+	socket, set := os.LookupEnv(EnvBrokerSocket)
+	switch {
+	case !set:
+		return "", false, nil
+	case socket == "":
+		return "", true, fmt.Errorf("%s is set but empty", EnvBrokerSocket)
+	default:
+		return socket, true, nil
+	}
+}
+
+// RejectInBrokerMode returns an error naming the action when the run is in broker
+// mode, where the access token belongs to the broker and cannot be managed here.
+func RejectInBrokerMode(action string) error {
+	_, active, err := BrokerMode()
+	switch {
+	case err != nil:
+		return err
+	case active:
+		return fmt.Errorf("%s is not available while %s is set: the access token is held by the DocBase broker", action, EnvBrokerSocket)
+	default:
+		return nil
+	}
 }
 
 // ResolveAccessToken returns the access token to use, in this order: the --token

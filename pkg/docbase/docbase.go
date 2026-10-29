@@ -1,6 +1,7 @@
 package docbase
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -36,6 +37,11 @@ func (a *API) SetBaseURL(baseURL string) {
 // SetTimeout sets the timeout for API requests
 func (a *API) SetTimeout(timeout int) {
 	a.client.SetTimeout(time.Duration(timeout) * time.Second)
+}
+
+// SetTransport sets the transport that carries API requests
+func (a *API) SetTransport(rt http.RoundTripper) {
+	a.client.SetTransport(rt)
 }
 
 // Get sends a GET request to the API
