@@ -11,9 +11,11 @@ import (
 )
 
 // TestMain swaps in an in-memory keyring so that no test can reach the
-// developer's real credential store.
+// developer's real credential store. The in-memory keyring needs no D-Bus
+// session bus, which Linux CI runners lack, so the session bus check is bypassed.
 func TestMain(m *testing.M) {
 	keyring.MockInit()
+	SetBusCheck(func() bool { return true })
 	os.Exit(m.Run())
 }
 
@@ -72,6 +74,68 @@ func TestStoreErrors(t *testing.T) {
 	}
 	if err := Delete("example"); !errors.Is(err, boom) {
 		t.Errorf("Delete: got %v, want an error wrapping %v", err, boom)
+	}
+}
+
+func TestNoSessionBus(t *testing.T) {
+	keyring.MockInit()
+	if err := keyring.Set(service, "example", "stored"); err != nil {
+		t.Fatalf("keyring.Set: %v", err)
+	}
+
+	restore := SetBusCheck(func() bool { return false })
+	t.Cleanup(restore)
+
+	checkBlocked(t)
+
+	// The team is validated first, so an empty team still reports its own error.
+	if _, err := Get(""); err == nil || !strings.Contains(err.Error(), "team domain is required") {
+		t.Errorf("Get(\"\"): got %v, want the team domain error", err)
+	}
+	if err := Set("", "token"); err == nil || !strings.Contains(err.Error(), "team domain is required") {
+		t.Errorf("Set(\"\"): got %v, want the team domain error", err)
+	}
+	if err := Delete(""); err == nil || !strings.Contains(err.Error(), "team domain is required") {
+		t.Errorf("Delete(\"\"): got %v, want the team domain error", err)
+	}
+
+	// The returned function puts the previous check back.
+	restore()
+	if got, err := Get("example"); err != nil || got != "stored" {
+		t.Errorf("Get after restore: got %q, %v; want %q", got, err, "stored")
+	}
+}
+
+// checkBlocked checks that, with no session bus, Get, Set and Delete fail with
+// the session bus error and leave the keyring entry for "example" (which holds
+// "stored") as it was, so none of them reached the keyring.
+func checkBlocked(t *testing.T) {
+	t.Helper()
+
+	token, err := Get("example")
+	checkNoSessionBus(t, "Get", err)
+	if token != "" {
+		t.Errorf("Get: got token %q, want none", token)
+	}
+	checkNoSessionBus(t, "Set", Set("example", "replacement"))
+	checkNoSessionBus(t, "Delete", Delete("example"))
+
+	if got, err := keyring.Get(service, "example"); err != nil || got != "stored" {
+		t.Errorf("keyring entry: got %q, %v; want %q untouched", got, err, "stored")
+	}
+}
+
+// checkNoSessionBus checks that err wraps the session bus error in the credential
+// store's error format and is not mistaken for a missing entry.
+func checkNoSessionBus(t *testing.T, name string, err error) {
+	t.Helper()
+
+	if !errors.Is(err, errNoSessionBus) || errors.Is(err, ErrNotFound) {
+		t.Errorf("%s: got %v, want an error wrapping %v", name, err, errNoSessionBus)
+		return
+	}
+	if !strings.HasPrefix(err.Error(), "OS credential store: ") {
+		t.Errorf("%s: got %q, want the %q prefix", name, err, "OS credential store: ")
 	}
 }
 

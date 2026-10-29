@@ -88,6 +88,21 @@ Earlier versions stored the token in plaintext in `~/.config/docbase/config.json
 
 The `ACCESS_TOKEN` environment variable is no longer read; use `DOCBASE_API_TOKEN` instead.
 
+#### CI and GitHub Actions
+
+In CI, do not run `docbase auth login`; nothing needs to be stored. Pass the token only to the steps that need it through `DOCBASE_API_TOKEN`:
+
+```yaml
+- name: Fetch a DocBase memo
+  env:
+    DOCBASE_API_TOKEN: ${{ secrets.DOCBASE_API_TOKEN }}
+  run: docbase --team your-team memo view 12345 > memo.md
+```
+
+Use a dedicated token with read-only scope and an expiry. If the fetched content is given to an AI agent, enable the token's AI-use option so DocBase excludes groups and `no-ai` memos that are not allowed for AI.
+
+Do not reference the DocBase secret in a job that runs an AI agent: a runner keeps every secret its job references in memory, and on hosted runners the agent can become root. Fetch in a separate job and pass the result to the agent job as an artifact.
+
 ### Configuration
 
 You can view and modify your configuration using the `config` command:
@@ -106,7 +121,7 @@ docbase config set --output-format json
 | Variable | Description |
 | --- | --- |
 | `DOCBASE_API_TOKEN` | Access token to use without saving it. Overrides the stored token, but not `--token`. |
-| `DOCBASE_INSECURE_STORAGE` | Set to `1` to store the token in plaintext in the config file (mode 0600) instead of the credential store. For headless Linux or CI environments without a credential store. |
+| `DOCBASE_INSECURE_STORAGE` | Last resort for long-lived machines without a credential store: set to `1` to store the token in plaintext in the config file (mode 0600) instead of the credential store. In CI, use `DOCBASE_API_TOKEN` instead. |
 
 ## Usage Examples
 

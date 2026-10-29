@@ -13,6 +13,8 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/zalando/go-keyring"
+
+	"github.com/basi/docbase-cli/internal/credential"
 )
 
 const (
@@ -25,9 +27,11 @@ const (
 )
 
 // TestMain swaps in an in-memory keyring so that no test can reach the
-// developer's real credential store.
+// developer's real credential store. The in-memory keyring needs no D-Bus
+// session bus, which Linux CI runners lack, so the session bus check is bypassed.
 func TestMain(m *testing.M) {
 	keyring.MockInit()
+	credential.SetBusCheck(func() bool { return true })
 	os.Exit(m.Run())
 }
 
