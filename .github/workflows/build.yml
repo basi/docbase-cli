@@ -23,7 +23,8 @@ jobs:
           version: latest
 
       - name: Modernize
-        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest ./...
+        # x/tools v0.50.0+ requires Go 1.26; bump this together with go-version above.
+        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@v0.49.0 ./...
 
       - name: Build
         run: go build -o docbase-cli .
