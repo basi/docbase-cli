@@ -7,6 +7,7 @@ import (
 	// Import all commands
 	_ "github.com/basi/docbase-cli/cmd/api"
 	_ "github.com/basi/docbase-cli/cmd/auth"
+	_ "github.com/basi/docbase-cli/cmd/broker"
 	_ "github.com/basi/docbase-cli/cmd/comment"
 	_ "github.com/basi/docbase-cli/cmd/completion"
 	_ "github.com/basi/docbase-cli/cmd/config"

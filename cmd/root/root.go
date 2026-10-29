@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/basi/docbase-cli/internal/config"
 )
 
 // Version information
@@ -42,6 +44,10 @@ Examples:
 	}
 )
 
+// SkipConfigAnnotation, set to "true" in the Annotations of a command, keeps the
+// command from reading the config file (and from needing a home directory).
+const SkipConfigAnnotation = "docbase/skip-config"
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
@@ -49,7 +55,12 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	// Read the config before the command runs, unless the command opts out.
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if cmd.Annotations[SkipConfigAnnotation] != "true" {
+			initConfig()
+		}
+	}
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/docbase/config.json)")
@@ -73,6 +84,12 @@ func initConfig() {
 		// Find home directory.
 		home, err := os.UserHomeDir()
 		if err != nil {
+			if _, brokerMode, _ := config.BrokerMode(); brokerMode {
+				// A run that only has the socket of a broker has no use for a config
+				// file, and may well have no home directory: do not look for one.
+				viper.AutomaticEnv()
+				return
+			}
 			fmt.Println(err)
 			os.Exit(1)
 		}

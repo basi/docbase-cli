@@ -684,3 +684,52 @@ func TestDisplayValue(t *testing.T) {
 		})
 	}
 }
+
+func TestBrokerMode(t *testing.T) {
+	t.Run("not set", func(t *testing.T) {
+		unsetEnv(t, EnvBrokerSocket)
+
+		socket, active, err := BrokerMode()
+		if socket != "" || active || err != nil {
+			t.Errorf("BrokerMode() = %q, %v, %v; want no broker mode", socket, active, err)
+		}
+		if err := RejectInBrokerMode("auth login"); err != nil {
+			t.Errorf("RejectInBrokerMode outside the broker mode = %v, want nil", err)
+		}
+	})
+
+	t.Run("set", func(t *testing.T) {
+		t.Setenv(EnvBrokerSocket, "/run/docbase/broker.sock")
+
+		socket, active, err := BrokerMode()
+		if socket != "/run/docbase/broker.sock" || !active || err != nil {
+			t.Errorf("BrokerMode() = %q, %v, %v; want the socket", socket, active, err)
+		}
+		err = RejectInBrokerMode("auth login")
+		if err == nil || !strings.Contains(err.Error(), "auth login") || !strings.Contains(err.Error(), EnvBrokerSocket) {
+			t.Errorf("RejectInBrokerMode in the broker mode = %v, want an error naming the action and %s", err, EnvBrokerSocket)
+		}
+	})
+
+	t.Run("set but empty is an error, not the absence of a broker", func(t *testing.T) {
+		t.Setenv(EnvBrokerSocket, "")
+
+		socket, active, err := BrokerMode()
+		if socket != "" || !active || err == nil || err.Error() != "DOCBASE_BROKER_SOCKET is set but empty" {
+			t.Errorf("BrokerMode() = %q, %v, %v; want the broker mode with the set-but-empty error", socket, active, err)
+		}
+		if err := RejectInBrokerMode("auth login"); err == nil || err.Error() != "DOCBASE_BROKER_SOCKET is set but empty" {
+			t.Errorf("RejectInBrokerMode = %v, want the set-but-empty error", err)
+		}
+	})
+}
+
+// unsetEnv removes the variable for the test; the original value comes back afterwards.
+func unsetEnv(t *testing.T, name string) {
+	t.Helper()
+
+	t.Setenv(name, "")
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatalf("Unsetenv: %v", err)
+	}
+}
